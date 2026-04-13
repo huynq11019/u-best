@@ -46,4 +46,9 @@ response exaple:
   }
 ]
 
-và mong muốn sẽ viết 1 tool để ngay lập tức đặt lệnh trên các nhà cái khi được thông báo khi có odđs
+và mong muốn sẽ viết 1 tool để ngay lập tức đặt lệnh trên các nhà cái khi được thông báo khi có odds
+yêu cầu thời gian từ lúc nhận được kèo đến lúc đặt lệnh <20s
+
+- Bản MVP đầu tiêu sẽ sử dụng playwire để thực hiện auto đặt lệnh trên trang của nhà cái
+
+- Về sau từ các bước thực hiện có thể truy vết ra các api và sequence sử dụng các api tương ứng để đặt lệnh nhằm tối ưu thời gian từ lúc nhận kèo đế lúc đặt lệnh thành công.

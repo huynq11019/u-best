@@ -1,0 +1,318 @@
+openapi: 3.0.3
+info:
+  title: Auto Surebet Order API
+  version: 0.1.0
+  description: |
+    Contract for receiving surebet opportunities and monitoring execution status
+    for the MVP auto-order feature.
+servers:
+  - url: http://localhost:8080
+paths:
+  /webhooks/surebet/ou:
+    post:
+      summary: Receive a surebet OU opportunity
+      operationId: ingestSurebetOpportunity
+      tags: [Webhook]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SurebetOpportunityRequest'
+      responses:
+        '202':
+          description: Accepted for execution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedResponse'
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Duplicate opportunity in dedup window
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Rejected by risk policy or stale checks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auto-order/executions/{executionId}:
+    get:
+      summary: Get execution attempt status
+      operationId: getExecutionStatus
+      tags: [Execution]
+      parameters:
+        - name: executionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Execution status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionStatusResponse'
+        '404':
+          description: Execution id not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/auto-order/mode:
+    post:
+      summary: Pause or resume auto ordering
+      operationId: setAutoOrderMode
+      tags: [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModeRequest'
+      responses:
+        '200':
+          description: Mode updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModeResponse'
+        '400':
+          description: Invalid mode request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    SurebetOpportunityRequest:
+      type: object
+      required:
+        - sport
+        - market
+        - scope
+        - home
+        - away
+        - from_books
+        - line
+        - updated_at
+        - bet
+      properties:
+        opportunity_id:
+          type: string
+          description: Stable upstream identifier when available
+        sport:
+          type: string
+          enum: [football]
+        market:
+          type: string
+          enum: [OU]
+        scope:
+          type: string
+          enum: [FT]
+        home:
+          type: string
+        away:
+          type: string
+        from_books:
+          type: string
+          description: Bookmaker pair marker (example saba+x1)
+        line:
+          type: number
+        profit_pct:
+          type: number
+        updated_at:
+          type: string
+          format: date-time
+        bet:
+          $ref: '#/components/schemas/BetPlan'
+    BetPlan:
+      type: object
+      required:
+        - total_stake
+        - profit_pct_calc
+        - payout_equal
+        - legs
+      properties:
+        total_stake:
+          type: number
+        profit_pct_calc:
+          type: number
+          description: Must be >= configured global threshold (default 3.0)
+        payout_equal:
+          type: number
+        legs:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/BetLeg'
+    BetLeg:
+      type: object
+      required:
+        - type
+        - odds
+        - book
+        - stake
+        - label
+      properties:
+        type:
+          type: string
+          enum: [Over, Under]
+        odds:
+          type: number
+        book:
+          type: string
+          description: Bookmaker key for placement adapter
+        stake:
+          type: number
+        label:
+          type: string
+        team:
+          type: string
+          nullable: true
+    AcceptedResponse:
+      type: object
+      required:
+        - execution_id
+        - status
+        - dedup
+      properties:
+        execution_id:
+          type: string
+        status:
+          type: string
+          enum: [ACCEPTED, DUPLICATE_SKIPPED]
+        dedup:
+          type: object
+          required: [is_duplicate, key]
+          properties:
+            is_duplicate:
+              type: boolean
+            key:
+              type: string
+        deadline_seconds:
+          type: integer
+          example: 20
+    ExecutionStatusResponse:
+      type: object
+      required:
+        - execution_id
+        - status
+        - started_at
+      properties:
+        execution_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - RECEIVED
+            - VALIDATING
+            - READY
+            - PLACING_LEG_1
+            - PLACING_LEG_2
+            - COMPENSATING_HEDGE
+            - COMPENSATING_VOID
+            - COMPLETED
+            - COMPLETED_PARTIAL
+            - REJECTED
+            - FAILED
+            - MANUAL_REQUIRED
+        status_reason:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        total_latency_ms:
+          type: integer
+          nullable: true
+        legs:
+          type: array
+          items:
+            $ref: '#/components/schemas/LegExecutionResult'
+        compensation:
+          type: object
+          nullable: true
+          properties:
+            action:
+              type: string
+              enum: [HEDGE, VOID]
+            status:
+              type: string
+              enum: [NOT_RUN, SUCCESS, FAILED]
+        alert_emitted:
+          type: boolean
+    LegExecutionResult:
+      type: object
+      required:
+        - leg_index
+        - book
+        - status
+      properties:
+        leg_index:
+          type: integer
+        book:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, PLACED, FAILED, HEDGED, VOIDED]
+        placed_odds:
+          type: number
+          nullable: true
+        placed_stake:
+          type: number
+          nullable: true
+        order_ref:
+          type: string
+          nullable: true
+        error_code:
+          type: string
+          nullable: true
+    ModeRequest:
+      type: object
+      required:
+        - enabled
+      properties:
+        enabled:
+          type: boolean
+        reason:
+          type: string
+    ModeResponse:
+      type: object
+      required:
+        - enabled
+        - updated_at
+      properties:
+        enabled:
+          type: boolean
+        reason:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      required:
+        - error_code
+        - message
+      properties:
+        error_code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true

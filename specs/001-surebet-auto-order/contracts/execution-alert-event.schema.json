@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://best-bot.local/contracts/execution-alert-event.schema.json",
+  "title": "ExecutionAlertEvent",
+  "type": "object",
+  "required": [
+    "event_type",
+    "execution_id",
+    "severity",
+    "alert_type",
+    "message",
+    "emitted_at"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "const": "auto_order.execution_alert.v1"
+    },
+    "execution_id": {
+      "type": "string"
+    },
+    "opportunity_ref": {
+      "type": "string"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["INFO", "WARN", "CRITICAL"]
+    },
+    "alert_type": {
+      "type": "string",
+      "enum": [
+        "RISK_REJECT",
+        "PARTIAL_FAILURE",
+        "MANUAL_REQUIRED",
+        "SYSTEM_FAILURE"
+      ]
+    },
+    "message": {
+      "type": "string"
+    },
+    "emitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}
