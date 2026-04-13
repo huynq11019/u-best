@@ -4,18 +4,28 @@ Test case for token persistence in SABAIngestor.
 import os
 import pytest
 import json
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock
 from ingestors.saba import SABAIngestor, TOKEN_FILE
 
 @pytest.fixture
 def clean_token_file():
-    # Setup: remove token file if exists
+    original_content = None
+    had_original_file = os.path.exists(TOKEN_FILE)
+    if had_original_file:
+        with open(TOKEN_FILE, "r") as f:
+            original_content = f.read()
+
     if os.path.exists(TOKEN_FILE):
         os.remove(TOKEN_FILE)
+
     yield
-    # Teardown: remove token file
+
     if os.path.exists(TOKEN_FILE):
         os.remove(TOKEN_FILE)
+    if had_original_file:
+        os.makedirs(os.path.dirname(TOKEN_FILE), exist_ok=True)
+        with open(TOKEN_FILE, "w") as f:
+            f.write(original_content or "")
 
 @pytest.mark.asyncio
 async def test_token_persistence(clean_token_file):
