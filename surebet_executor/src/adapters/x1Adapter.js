@@ -42,10 +42,23 @@ export default class X1Adapter extends BaseAdapter {
 
     log.info('1xBet: filling credentials');
     await page.waitForSelector('input#username', { state: 'visible' });
-    // Use type instead of fill to trigger input events required by validation
-    await page.type('input#username', this.config.username || '', { delay: 50 });
-    await page.type('input#username-password', this.config.password || '', { delay: 50 });
     
+    // Clear inputs first, then type to trigger validation events
+    const usernameInput = page.locator('input#username');
+    const passwordInput = page.locator('input#username-password');
+    
+    await usernameInput.fill('');
+    await page.waitForTimeout(200); // short wait to let UI react
+    await usernameInput.pressSequentially(this.config.username || '', { delay: 100 });
+    
+    await passwordInput.fill('');
+    await page.waitForTimeout(200);
+    await passwordInput.pressSequentially(this.config.password || '', { delay: 100 });
+    
+    // Verify inputs before submitting
+    log.info(`1xBet: taking screenshot before submit to verify inputs`);
+    await page.screenshot({ path: './error_screenshots/before_submit_' + Date.now() + '.png', fullPage: false });
+
     log.info('1xBet: submitting login');
     await page.click('.auth-form-fields__submit');
 
