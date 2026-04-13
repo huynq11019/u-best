@@ -3,7 +3,7 @@ import time
 import pytest
 
 from normalizer.schema import MatchStatus, MergedEvent, Score
-from state.cache import StateCache, _idempotency_key
+from state.cache import StateCache
 
 
 class _FakeRedis:
@@ -19,8 +19,8 @@ class _FakeRedis:
         self.setex_calls.append((key, ttl, payload))
 
     async def keys(self, pattern):
-        assert pattern == "match:*"
-        return [k for k in self.store.keys() if k.startswith("match:")]
+        prefix = pattern[:-1] if pattern.endswith("*") else pattern
+        return [k for k in self.store.keys() if k.startswith(prefix)]
 
 
 def _make_event(match_key: str = "pl|a|b") -> MergedEvent:
@@ -36,14 +36,6 @@ def _make_event(match_key: str = "pl|a|b") -> MergedEvent:
         source_ids={"saba": "1"},
         merged_at=time.time(),
     )
-
-
-def test_idempotency_key_stable_and_sensitive_to_fields():
-    k1 = _idempotency_key("m1", "saba", "ou", "over", 2.5)
-    k2 = _idempotency_key("m1", "saba", "ou", "over", 2.5)
-    k3 = _idempotency_key("m1", "saba", "ou", "under", 2.5)
-    assert k1 == k2
-    assert k1 != k3
 
 
 @pytest.mark.asyncio

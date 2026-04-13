@@ -1,5 +1,6 @@
 import os
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
@@ -96,19 +97,13 @@ async def test_reload_token_success_and_not_found():
 
     app = create_api_app(aggregator)
     async with TestServer(app) as server, TestClient(server) as client:
-        old_token = os.environ.get("SABA_TOKEN")
-        try:
+        with patch.dict(os.environ, {"SABA_TOKEN": "test-token-initial"}, clear=False):
             resp = await client.post("/admin/reload-token", json={"token": "new-token"})
             assert resp.status == 200
             payload = await resp.json()
             assert payload["status"] == "ok"
             assert saba.reload_called == 1
             assert os.environ.get("SABA_TOKEN") == "new-token"
-        finally:
-            if old_token is None:
-                os.environ.pop("SABA_TOKEN", None)
-            else:
-                os.environ["SABA_TOKEN"] = old_token
 
     aggregator_missing = SimpleNamespace(
         ingestors=[_FakeIngestor("1xbet", healthy=True)],

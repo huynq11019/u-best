@@ -5,8 +5,12 @@ from unittest.mock import AsyncMock
 import pytest
 
 from normalizer.schema import MatchStatus, MergedEvent, Score
-from sinks.n8n_webhook import N8NWebhookSink, _serialize_event
+from sinks.n8n_webhook import N8NWebhookSink
 from sinks.redis_pubsub import RedisPubSubSink
+
+CHANNEL_KEY_TRUNCATE_LENGTH = 60
+EXTRA_KEY_SUFFIX_LENGTH = 40
+LONG_MATCH_KEY_SUFFIX_LENGTH = CHANNEL_KEY_TRUNCATE_LENGTH + EXTRA_KEY_SUFFIX_LENGTH
 
 
 def _make_event(match_key: str = "pl|home|away", with_two_sources: bool = True) -> MergedEvent:
@@ -70,7 +74,7 @@ class _FakeSession:
 @pytest.mark.asyncio
 async def test_redis_sink_publish_paths():
     sink = RedisPubSubSink()
-    event = _make_event("pl|very|long|" + ("k" * 100))
+    event = _make_event("pl|very|long|" + ("k" * LONG_MATCH_KEY_SUFFIX_LENGTH))
 
     assert await sink.publish(event) is False
 
@@ -78,8 +82,8 @@ async def test_redis_sink_publish_paths():
     result = await sink.publish(event)
     assert result is True
     assert sink._redis.calls
-    assert sink._redis.calls[0][0].startswith("odds.football.")
-    assert "|" not in sink._redis.calls[0][0]
+    expected_safe_key = event.match_key.replace("|", ".")[:60]
+    assert sink._redis.calls[0][0] == f"odds.football.{expected_safe_key}"
 
     sink._redis = _FakeRedis(should_fail=True)
     assert await sink.publish(event) is False
@@ -90,14 +94,14 @@ async def test_redis_sink_publish_paths():
 @pytest.mark.asyncio
 async def test_n8n_serialize_send_and_retry_queue():
     event = _make_event(with_two_sources=True)
-    payload = _serialize_event(event)
-    assert payload["two_sources"] is True
-    assert payload["status"] == "live"
 
     sink = N8NWebhookSink()
     sink._post = AsyncMock(return_value=True)
     sent = await sink.send(event)
     assert sent is True
+    payload = sink._post.await_args.args[0]
+    assert payload["two_sources"] is True
+    assert payload["status"] == "live"
     assert sink._retry_queue.qsize() == 0
 
     sink._post = AsyncMock(return_value=False)
@@ -110,8 +114,7 @@ async def test_n8n_serialize_send_and_retry_queue():
 async def test_n8n_enqueue_retry_when_queue_full_drops_oldest():
     sink = N8NWebhookSink()
     sink._retry_queue = asyncio.Queue(maxsize=1)
-    first = {"payload": {"match_key": "old"}, "attempts": 0, "next_retry": time.time()}
-    sink._retry_queue.put_nowait(first)
+    await sink._enqueue_retry({"match_key": "old"})
 
     await sink._enqueue_retry({"match_key": "new"})
     item = sink._retry_queue.get_nowait()
@@ -136,7 +139,10 @@ async def test_n8n_post_success_http_error_and_timeout():
 async def test_n8n_retry_worker_requeues_failed_item():
     sink = N8NWebhookSink()
     sink._post = AsyncMock(return_value=False)
-    await sink._retry_queue.put({"payload": {"match_key": "k1"}, "attempts": 0, "next_retry": time.time() - 1})
+    await sink._enqueue_retry({"match_key": "k1"})
+    item = sink._retry_queue.get_nowait()
+    item["next_retry"] = time.time() - 1
+    sink._retry_queue.put_nowait(item)
 
     worker = asyncio.create_task(sink.retry_worker())
     await asyncio.sleep(0.05)
