@@ -1,8 +1,35 @@
 // T008 - Base Bookmaker Adapter interface
 
 /**
+ * Supported sport types for odds fetching.
+ * Adapters should use these keys in getActiveOdds().
+ */
+export const SportType = Object.freeze({
+  FOOTBALL: 'football',
+  BASKETBALL: 'basketball',
+  TENNIS: 'tennis',
+  BASEBALL: 'baseball',
+  HOCKEY: 'hockey',
+  VOLLEYBALL: 'volleyball',
+  ALL: 'all',
+});
+
+/**
+ * @typedef {Object} ActiveOdd
+ * @property {string} eventId        - Unique event identifier on the bookmaker
+ * @property {string} sport           - SportType value
+ * @property {string} home            - Home team / player name
+ * @property {string} away            - Away team / player name
+ * @property {string} league          - League / competition name
+ * @property {string} marketType      - e.g. "1X2", "OU", "AH"
+ * @property {string} startTime       - ISO datetime of the event
+ * @property {Array<{label: string, odds: number, line?: number}>} selections - Available selections
+ * @property {string} scope           - "live" | "prematch"
+ */
+
+/**
  * Abstract base class for all bookmaker adapters.
- * Each bookmaker must implement: login, warmUp, placeBet, hedgeLeg, voidLeg.
+ * Each bookmaker must implement: login, warmUp, placeBet, hedgeLeg, voidLeg, getActiveOdds.
  */
 export class BaseAdapter {
   constructor(bookmakerKey, bookkieConfig) {
@@ -63,5 +90,17 @@ export class BaseAdapter {
    */
   async voidLeg(page, orderRef) {
     throw new Error(`${this.constructor.name}.voidLeg() not implemented`);
+  }
+
+  /**
+   * Fetch the list of active odds/markets from the bookmaker.
+   * Should be called after a successful login().
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} [sportType]  - One of SportType values. Defaults to SportType.FOOTBALL.
+   * @returns {Promise<ActiveOdd[]>}  - Array of active odds matching the sport filter.
+   */
+  async getActiveOdds(page, sportType) {
+    throw new Error(`${this.constructor.name}.getActiveOdds() not implemented`);
   }
 }

@@ -1,0 +1,15 @@
+node_modules/
+.env
+*.env.local
+
+# Playwright
+error_screenshots/
+playwright-report/
+test-results/
+
+# Saba session snapshot — contains auth tokens, do NOT commit
+.saba_session.json
+
+# Logs
+*.log
+logs/

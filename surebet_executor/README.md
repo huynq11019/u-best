@@ -57,7 +57,7 @@ npm start
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/webhooks/surebet/ou` | Ingest a surebet opportunity |
+| `POST` | `/webhooks/surebet/ou` | Ingest a surebet opportunity ([Detailed Guide](docs/webhook_guide.md)) |
 | `GET` | `/auto-order/executions/:id` | Check execution status |
 | `GET` | `/health` | Health check |
 

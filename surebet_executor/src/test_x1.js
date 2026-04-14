@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import X1Adapter from './adapters/x1Adapter.js';
+import { SportType } from './adapters/baseAdapter.js';
 import { config } from './config/index.js';
 import fs from 'fs';
 import path from 'path';
@@ -39,6 +40,24 @@ async function runTest() {
     console.log('Testing warmUp...');
     await adapter.warmUp(page);
     console.log('warmUp result: success');
+
+    // --- getActiveOdds tests ---
+    const sportsToTest = [
+      SportType.FOOTBALL,
+      SportType.BASKETBALL,
+      SportType.ALL,
+    ];
+
+    for (const sport of sportsToTest) {
+      console.log(`\nTesting getActiveOdds for sport: ${sport}`);
+      const odds = await adapter.getActiveOdds(page, sport);
+      console.log(`  → Found ${odds.length} active events`);
+      if (odds.length > 0) {
+        const sample = odds[0];
+        console.log(`  Sample event: [${sample.league}] ${sample.home} vs ${sample.away}`);
+        console.log(`  Selections (${sample.selections.length}):`, sample.selections.slice(0, 3));
+      }
+    }
 
   } catch (error) {
     console.error('Test failed:', error);

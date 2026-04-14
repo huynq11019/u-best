@@ -13,6 +13,56 @@ const pools = new Map();
 let sharedPersistentContext = null;
 let launchPromise = null;
 
+function buildLaunchOptions() {
+  return {
+    headless: config.browserPool.headless,
+    executablePath: config.browserPool.executablePath || undefined,
+    viewport: { width: 1280, height: 800 },
+    ignoreHTTPSErrors: true,
+    locale: 'vi-VN',
+    timezoneId: 'Asia/Ho_Chi_Minh',
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+    args: [
+      '--disable-blink-features=AutomationControlled',
+      '--disable-infobars',
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-dev-shm-usage',
+    ],
+    ignoreDefaultArgs: ['--enable-automation'],
+  };
+}
+
+async function applyStealth(context) {
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'webdriver', {
+      get: () => undefined,
+      configurable: true,
+    });
+
+    window.chrome = window.chrome || { runtime: {} };
+
+    Object.defineProperty(navigator, 'languages', {
+      get: () => ['vi-VN', 'vi', 'en-US', 'en'],
+      configurable: true,
+    });
+
+    Object.defineProperty(navigator, 'plugins', {
+      get: () => [1, 2, 3, 4, 5],
+      configurable: true,
+    });
+
+    const originalQuery = window.navigator.permissions && window.navigator.permissions.query;
+    if (originalQuery) {
+      window.navigator.permissions.query = (parameters) => (
+        parameters && parameters.name === 'notifications'
+          ? Promise.resolve({ state: Notification.permission })
+          : originalQuery(parameters)
+      );
+    }
+  });
+}
+
 /**
  * Create a Playwright page pool for a given bookmaker adapter.
  * The factory opens a browser context + page, runs login+warmUp, and
@@ -29,13 +79,11 @@ function createBookmakerPool(bookmakerKey, adapter) {
       if (config.browserPool.userDataDir) {
         if (!sharedPersistentContext && !launchPromise) {
           log.info({ bookmakerKey, userDataDir: config.browserPool.userDataDir }, 'Launching shared persistent context');
-          launchPromise = chromium.launchPersistentContext(config.browserPool.userDataDir, {
-            headless: config.browserPool.headless,
-            executablePath: config.browserPool.executablePath || undefined,
-            viewport: { width: 1280, height: 800 },
-            ignoreHTTPSErrors: true,
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-          }).then(ctx => {
+          launchPromise = chromium.launchPersistentContext(
+            config.browserPool.userDataDir,
+            buildLaunchOptions()
+          ).then(async (ctx) => {
+            await applyStealth(ctx);
             sharedPersistentContext = ctx;
             return ctx;
           });
@@ -73,18 +121,19 @@ function createBookmakerPool(bookmakerKey, adapter) {
       let browser = null;
       if (!browser || !browser.isConnected()) {
         log.info({ bookmakerKey }, 'Launching standard browser');
-        browser = await chromium.launch({ 
-          headless: config.browserPool.headless,
-          executablePath: config.browserPool.executablePath || undefined,
-        });
+        browser = await chromium.launch(buildLaunchOptions());
       }
 
       const context = await browser.newContext({
-        userAgent:
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
         viewport: { width: 1280, height: 800 },
         ignoreHTTPSErrors: true,
+        locale: 'vi-VN',
+        timezoneId: 'Asia/Ho_Chi_Minh',
+        userAgent:
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
       });
+
+      await applyStealth(context);
 
       const page = await context.newPage();
 
