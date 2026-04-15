@@ -4,9 +4,10 @@ import { config } from './config/index.js';
 import { logger } from './config/logger.js';
 import { connectRedis, disconnectRedis } from './config/redis.js';
 import { loadBuiltInAdapters, listAdapters, getAdapter } from './services/adapterRegistry.js';
-import { initPool, drainAllPools } from './services/browserPool.js';
+import { initPool, drainAllPools, getPoolStats } from './services/browserPool.js';
 import { webhookRoutes } from './webhooks/routes.js';
 import { executionRoutes } from './webhooks/executionRoutes.js';
+import { apiRoutes } from './api/routes.js';
 
 const app = Fastify({
   loggerInstance: logger,
@@ -59,6 +60,7 @@ async function start() {
   // 4. Register routes
   await app.register(webhookRoutes, { prefix: '/webhooks' });
   await app.register(executionRoutes, { prefix: '/auto-order' });
+  await app.register(apiRoutes, { prefix: '/api' });
 
   // Health check
   app.get('/health', async () => ({
@@ -66,6 +68,28 @@ async function start() {
     adapters: listAdapters(),
     ts: new Date().toISOString(),
   }));
+
+  // Adapters detailed health check
+  app.get('/health/adapters', async () => {
+    const registeredKeys = listAdapters();
+    const stats = getPoolStats();
+    
+    const adapterDetails = registeredKeys.map((key) => {
+      const adapter = getAdapter(key);
+      return {
+        bookmakerKey: key,
+        adapterClass: adapter.constructor.name,
+        poolStatus: stats[key] || { status: 'not_initialized' },
+      };
+    });
+
+    return {
+      status: 'ok',
+      totalRegistered: registeredKeys.length,
+      adapters: adapterDetails,
+      ts: new Date().toISOString(),
+    };
+  });
 
   // 5. Start listening
   await app.listen({ port: config.port, host: '0.0.0.0' });

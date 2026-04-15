@@ -53,8 +53,9 @@ export function listAdapters() {
  */
 export async function loadBuiltInAdapters() {
   const adapterModules = {
-    saba: '../adapters/sabaAdapter.js',
+    // saba: '../adapters/sabaAdapter.js',
     x1: '../adapters/x1Adapter.js',
+    lu88: '../adapters/lu88Adapter.js',
   };
 
   for (const [key, modulePath] of Object.entries(adapterModules)) {

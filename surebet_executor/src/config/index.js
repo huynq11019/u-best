@@ -10,7 +10,7 @@ export const config = {
   dedupTtlSeconds: parseInt(process.env.DEDUP_TTL_SECONDS || '300', 10),
   executionDeadlineMs: parseInt(process.env.EXECUTION_DEADLINE_MS || '20000', 10),
   maxStakePerLeg: parseFloat(process.env.MAX_STAKE_PER_LEG || '1000'),
-  allowedBookmakers: (process.env.ALLOWED_BOOKMAKERS || 'saba,x1').split(',').map(b => b.trim()),
+  allowedBookmakers: (process.env.ALLOWED_BOOKMAKERS || 'saba,x1,lu88').split(',').map(b => b.trim()),
   bookkies: {
     saba: {
       baseUrl: process.env.SABA_BASE_URL || 'https://saba.sport',
@@ -21,6 +21,11 @@ export const config = {
       baseUrl: process.env.X1_BASE_URL || 'https://1xbet.com',
       username: process.env.X1_USERNAME || '',
       password: process.env.X1_PASSWORD || '',
+    },
+    lu88: {
+      baseUrl: process.env.LU88_BASE_URL || 'https://lu88.moe',
+      username: process.env.LU88_USERNAME || '',
+      password: process.env.LU88_PASSWORD || '',
     },
   },
   browserPool: {

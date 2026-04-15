@@ -92,9 +92,9 @@ function createBookmakerPool(bookmakerKey, adapter) {
         if (launchPromise) {
           await launchPromise;
         }
-        
+
         const page = await sharedPersistentContext.newPage();
-        
+
         // Attach crash recovery
         page.on('crash', () => {
           log.error({ bookmakerKey }, 'Page crashed in persistent context');
@@ -108,7 +108,7 @@ function createBookmakerPool(bookmakerKey, adapter) {
           await adapter.warmUp(page);
         } catch (err) {
           log.error({ bookmakerKey, err: err.message }, 'Persistent context page warm-up failed');
-          await page.close().catch(() => {});
+          await page.close().catch(() => { });
           throw err;
         }
 
@@ -149,7 +149,7 @@ function createBookmakerPool(bookmakerKey, adapter) {
         log.info({ bookmakerKey }, 'Browser context warmed and ready');
       } catch (err) {
         log.error({ bookmakerKey, err: err.message }, 'Warm-up failed, destroying context');
-        await context.close().catch(() => {});
+        await context.close().catch(() => { });
         throw err;
       }
 
@@ -183,7 +183,7 @@ function createBookmakerPool(bookmakerKey, adapter) {
     testOnBorrow: true,
     autostart: false,
     acquireTimeoutMillis: 15000,
-    idleTimeoutMillis: 60000,
+    idleTimeoutMillis: 600000,
     evictionRunIntervalMillis: 30000,
   });
 
@@ -258,4 +258,21 @@ export async function drainAllPools() {
   }
   pools.clear();
   log.info('All browser pools drained');
+}
+
+/**
+ * Get internal stats for all browser pools.
+ * @returns {Record<string, { size: number, available: number, borrowed: number, pending: number }>}
+ */
+export function getPoolStats() {
+  const stats = {};
+  for (const [key, pool] of pools.entries()) {
+    stats[key] = {
+      size: pool.size,
+      available: pool.available,
+      borrowed: pool.borrowed,
+      pending: pool.pending,
+    };
+  }
+  return stats;
 }

@@ -1,0 +1,305 @@
+[
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "https://lu88.moe/gw/api/v2/game/jackpot",
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://lu88.moe/",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "accept": "application/json, text/plain, */*",
+      "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "accept-language": "vi-VN",
+      "sec-ch-ua-mobile": "?0"
+    },
+    "postData": null
+  },
+  {
+    "type": "request",
+    "method": "POST",
+    "url": "https://lu88.moe/api/go-verify",
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://lu88.moe/",
+      "accept-language": "vi-VN",
+      "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "accept": "application/json, text/plain, */*",
+      "content-type": "application/json"
+    },
+    "postData": "{\"gameCode\":\"xd\",\"streamId\":\"XpjSI-1xObL\"}"
+  },
+  {
+    "type": "request",
+    "method": "POST",
+    "url": "https://lu88.moe/api/go-verify",
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://lu88.moe/",
+      "accept-language": "vi-VN",
+      "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "accept": "application/json, text/plain, */*",
+      "content-type": "application/json"
+    },
+    "postData": "{\"gameCode\":\"tx\",\"streamId\":\"XpjSI-AiCYw\"}"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "https://lu88.moe/gw/api/v2/common",
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://lu88.moe/",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "accept": "application/json, text/plain, */*",
+      "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "accept-language": "vi-VN",
+      "sec-ch-ua-mobile": "?0"
+    },
+    "postData": null
+  },
+  {
+    "type": "response",
+    "status": 200,
+    "url": "https://lu88.moe/gw/api/v2/game/jackpot",
+    "headers": {
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-encoding": "br",
+      "cf-cache-status": "DYNAMIC",
+      "etag": "W/\"1b97-hHrQXA+nJVHgyxmMkjNdiIlaR04\"",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=VPcdOtRLjFK6YBrTDJnxMAGzeVFmwBQOipwXluwxW%2FGSz2u%2FQZuFnBz1KuWT5NgPysDUpu26uUeWr6v3qdPLdbgx9yP3RJJ5W85a0q0SLcH2O8tyQ%2FHUdEH1bw%3D%3D\"}]}",
+      "cf-ray": "9ecc598ebf7d210b-HKG",
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "server-timing": "cfExtPri",
+      "date": "Wed, 15 Apr 2026 16:33:03 GMT",
+      "content-type": "application/json; charset=utf-8",
+      "vary": "accept-encoding",
+      "server": "cloudflare",
+      "priority": "u=1,i"
+    },
+    "body": "{\"status\":\"OK\",\"code\":200,\"data\":{\"3996\":\"24061158\",\"kts9988\":\"143617000\",\"kts9897\":\"282719600\",\"kts9918\":\"1030320000\",\"kts9926\":\"520187200\",\"kts9976\":\"188410000\",\"kts9892\":\"1603450000\",\"kts9964\":\"6214102300\",\"kts9872\":\"305855000\",\"kts9864\":\"507258900\",\"kts9949\":\"963435000\",\"kts9984\":\"3224815000\",\"kts9843\":\"425850000\",\"kts9956\":\"52555000\",\"kts9886\":\"1692460000\",\"kts9928\":\"2489900000\",\"kts9974\":\"322320590\",\"kts9877\":\"728270000\",\"kts9878\":\"797477500\",\"kts9880\":\"544425020\",\"kts9951\":\"615530000\",\"kts9883\":\"6337160000\",\"kts9934\":\"513560000\",\"kts9855\":\"219455000\",\"kts9891\":\"123609675\",\"kts9874\":\"583480000\",\"kts9968\":\"1184470000\",\"kts9936\":\"31003150\",\"kts9930\":\"130870000\",\"kts9915\":\"887440000\",\"kts9825\":\"3010410000\",\"kts9977\":\"834132000\",\"kts9983\":\"155586555\",\"kts9856\":\"193607232\",\"kts9944\":\"50741000\",\"kts9908\":\"151320000\",\"kts9899\":\"28367000\",\"kts9850\":\"339790000\",\"kts9829\":\"624120000\",\"kts9862\":\"18424800\",\"kts9868\":\"516305500\",\"kts9992\":\"1028025000\",\"kts9858\":\"26554000\",\"kts9828\":\"849365000\",\"kts9959\":\"603393500\",\"kts9907\":\"788893440\",\"kts9831\":\"226965000\",\"kts9938\":\"25737700\",\"kts9834\":\"777350000\",\"kts9929\":\"522611600\",\"kts9853\":\"443550000\",\"kts5995\":\"137443000\",\"ktmn5995\":\"137443000\",\"kts9869\":\"2536810000\",\"kts9963\":\"54092500\",\"kts9914\":\"60000000\",\"kts9898\":\"10976280000\",\"kts9925\":\"269960000\",\"kts9966\":\"604735000\",\"kts9849\":\"491108000\",\"kts9933\":\"1606590000\",\"kts9865\":\"740455000\",\"kts9932\":\"105494000\",\"kts9982\":\"90971500\",\"kts9788\":\"599020000\",\"kts9904\":\"169897500\",\"kts9962\":\"1021710700\",\"kts9844\":\"345240000\",\"kts9910\":\"2318570000\",\"kts9927\":\"469090000\",\"kts9846\":\"1453868000\",\"kts9876\":\"3585115000\",\"kts9965\":\"2314525000\",\"kts9887\":\"219427500\",\"kts9875\":\"4554130000\",\"kts9847\":\"853670000\",\"kts9884\":\"512035000\",\"kts9987\":\"867808860\",\"kts9852\":\"4368710000\",\"kts9991\":\"617817661.7946515649673529\",\"kts9903\":\"1093850000\",\"kts9971\":\"263046200\",\"kts9881\":\"6787220000\",\"kts9889\":\"1022060000\",\"kts9890\":\"234175000\",\"kts9996\":\"59553913000\",\"kts6996\":\"16044000\",\"kts9895\":\"2671650000\","
+  },
+  {
+    "type": "response",
+    "status": 200,
+    "url": "https://lu88.moe/gw/api/v2/common",
+    "headers": {
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-encoding": "br",
+      "cf-cache-status": "DYNAMIC",
+      "etag": "W/\"d6ea-C6HPKQuq9YTpHGkwQezt5LLfOac\"",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=At%2BxVfPhLOGGlL8pO6%2FXmaeemu9eK7adQmnUY14piRHtAXHeSeVJ76xZXdPdSwGMdnAUVBAEsYbHc3J2Fe6bjIybBGuCXehnyTFTCrIoLEpWp5Octj%2FJeP5QZA%3D%3D\"}]}",
+      "cf-ray": "9ecc598eff98210b-HKG",
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "server-timing": "cfExtPri",
+      "date": "Wed, 15 Apr 2026 16:33:03 GMT",
+      "content-type": "application/json; charset=utf-8",
+      "vary": "accept-encoding",
+      "server": "cloudflare",
+      "priority": "u=1,i"
+    },
+    "body": "{\"status\":\"OK\",\"code\":200,\"data\":{\"jackpotConfig\":{\"data\":[{\"game\":{\"partner_code\":\"\",\"partner_provider\":\"go\",\"partner_game_id\":\"vgmn_109\",\"partner_game_type\":\"\",\"category_id\":1,\"name\":\"Xóc đĩa Live\",\"normalize_name\":\"xoc dia live\",\"image\":\"2025/10/09/xoc_dia_3_50.webp\",\"type\":1,\"desktop\":false,\"flash\":false,\"android\":false,\"ios\":false,\"winphone\":false,\"is_desktop\":true,\"is_mobile\":true,\"is_new_tab\":true,\"display_types\":[6,120],\"order\":1,\"order_2\":0,\"order_3\":0,\"order_6\":1,\"order_7\":0,\"order_17\":0,\"order_57\":0,\"order_58\":0,\"order_101\":0,\"order_103\":0,\"order_104\":0,\"order_120\":43,\"order_121\":0,\"order_122\":0,\"order_123\":0,\"status\":1,\"is_favorite\":false,\"api_url\":\"\",\"is_fullscreen\":false,\"is_require_login\":true,\"maintain\":\"0\",\"tags\":\"\",\"deny_info\":\"\",\"sub_categories\":[900,901,902,922,926,927],\"branch\":\"\",\"created_by\":\"\",\"updated_by\":\"\",\"rotate\":0,\"_id\":\"67934b2c7d1a3484b5d89227\",\"id\":15809,\"created_time\":\"2024-07-27T10:14:05.403Z\",\"last_updated_time\":\"2026-02-09T10:46:30.969Z\"},\"partner_provider\":\"go\",\"partner_game_id\":\"vgmn_109\",\"amount\":40000000000,\"status\":\"ACTIVE\",\"branch\":\"\",\"_id\":\"67540fd1d4fb952bbe005731\",\"id\":2,\"created_time\":\"2024-12-07T09:05:21.675Z\",\"last_updated_time\":\"2025-07-04T12:39:30.062Z\"},{\"game\":{\"partner_code\":\"\",\"partner_provider\":\"go\",\"partner_game_id\":\"vgmn_110\",\"partner_game_type\":\"\",\"category_id\":1,\"name\":\"Tài Xỉu Live\",\"normalize_name\":\"tai xiu live\",\"image\":\"2025/09/10/Frame_2122072799.png\",\"type\":1,\"desktop\":false,\"flash\":false,\"android\":false,\"ios\":false,\"winphone\":false,\"is_desktop\":true,\"is_mobile\":true,\"is_new_tab\":true,\"display_types\":[6],\"order\":6,\"order_2\":0,\"order_3\":0,\"order_6\":7,\"order_7\":0,\"order_17\":0,\"order_57\":0,\"order_58\":0,\"order_101\":0,\"order_103\":0,\"order_104\":0,\"order_120\":0,\"order_121\":0,\"order_122\":0,\"order_123\":0,\"status\":1,\"is_favorite\":false,\"api_url\":\"\",\"is_fullscreen\":false,\"is_require_login\":true,\"maintain\":\"0\",\"tags\":\"\",\"deny_info\":\"\",\"sub_categories\":[900,901,922,926,927],\"branch\":\"\",\"created_by\":\"\",\"updated_by\""
+  },
+  {
+    "type": "response",
+    "status": 200,
+    "url": "https://lu88.moe/api/go-verify",
+    "headers": {
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-encoding": "gzip",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=1VqPDpl6xuxJwEBEo83%2BEd%2Fh6YQP28GH%2F8NjX4q%2FN0ZQLoJ6S4LrCEhg32VBTvytmSmkyZK9tMlcHPYTv0DdYu%2Ffw2jc%2BDn%2BFyh%2BMf%2BAlVbnycwOkyRZVmQaKA%3D%3D\"}]}",
+      "cf-ray": "9ecc598ecf81210b-HKG",
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "server-timing": "cfExtPri",
+      "date": "Wed, 15 Apr 2026 16:33:04 GMT",
+      "content-type": "application/json",
+      "vary": "Accept-Encoding, RSC, Next-Router-State-Tree, Next-Router-Prefetch",
+      "server": "cloudflare",
+      "priority": "u=1,i",
+      "x-frame-options": "SAMEORIGIN"
+    },
+    "body": "{\"token\":\"eyJhbGciOiJFZERTQSIsImtpZCI6Im5hbm9feDI1NTE5IiwidHlwIjoiSldUIn0.eyJhdWQiOiJzcGxheSIsImN1c3QiOiJXSEJxVTBrdFFXbERXWGQ4UWtNeE1Ua3hPVE10TVh3eExqVXlMakUyT1M0ME5Yd3hOemMyTWpjeE1EZ3oiLCJkb21haW4iOiJsdTg4Lm1vZSIsImV4cCI6MTc3NjI3MTA4MywiZm9yY2VEaXNjb25uZWN0IjpmYWxzZSwiaWF0IjoxNzc2MjcwNzgzLCJpcCI6IjEuNTIuMTY5LjQ1IiwiaXNzIjoibmFub2Nvc21vcyIsImp0aSI6IlVOZ2lvVTBBIiwibmJmIjoxNzc2MjcwNzgzLCJzdHJlYW1zIjpbIlhwalNJLUFpQ1l3Il0sInN1YiI6IjhjNjZkNGI4LTVkMjktNGZlYS1iYTIwLWM0ZjA4NTY2YTY0YiIsInVzZXIiOiJCQzExOTE5My0xIn0.91XPCFc2N9x5Wui3_RcWANYhlESsIVd7G1twe6YwBXXO24FUBn1Rcu-50363vYpJNEZ5j_7oBtJaAlJhT7q0Ag\"}"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "https://lu88.moe/images/loyalty/remind/loyalty-remind-no-login.webp",
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://lu88.moe/",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "accept-language": "vi-VN",
+      "sec-ch-ua-mobile": "?0"
+    },
+    "postData": null
+  },
+  {
+    "type": "response",
+    "status": 200,
+    "url": "https://lu88.moe/api/go-verify",
+    "headers": {
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-encoding": "gzip",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=%2F25FXQp43L2Zusytom5ZReVzbJJvMt6h96VTqdKuHk5onB%2FB%2B4TTDVCWFFaYZruJ8tdElp6ijilSpmVXFTNgCUmKej6Ui2OU%2BFQ1gOy1UozDmtHaqYwxQ7e5%2BQ%3D%3D\"}]}",
+      "cf-ray": "9ecc598ecf80210b-HKG",
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "server-timing": "cfExtPri",
+      "date": "Wed, 15 Apr 2026 16:33:04 GMT",
+      "content-type": "application/json",
+      "vary": "Accept-Encoding, RSC, Next-Router-State-Tree, Next-Router-Prefetch",
+      "server": "cloudflare",
+      "priority": "u=1,i",
+      "x-frame-options": "SAMEORIGIN"
+    },
+    "body": "{\"token\":\"eyJhbGciOiJFZERTQSIsImtpZCI6Im5hbm9feDI1NTE5IiwidHlwIjoiSldUIn0.eyJhdWQiOiJzcGxheSIsImN1c3QiOiJXSEJxVTBrdE1YaFBZa3g4UWtNeE1Ua3hPVE10TVh3eExqVXlMakUyT1M0ME5Yd3hOemMyTWpjeE1EZ3oiLCJkb21haW4iOiJsdTg4Lm1vZSIsImV4cCI6MTc3NjI3MTA4MywiZm9yY2VEaXNjb25uZWN0IjpmYWxzZSwiaWF0IjoxNzc2MjcwNzgzLCJpcCI6IjEuNTIuMTY5LjQ1IiwiaXNzIjoibmFub2Nvc21vcyIsImp0aSI6Ilp0ZHkzREpaIiwibmJmIjoxNzc2MjcwNzgzLCJzdHJlYW1zIjpbIlhwalNJLTF4T2JMIl0sInN1YiI6IjhjNjZkNGI4LTVkMjktNGZlYS1iYTIwLWM0ZjA4NTY2YTY0YiIsInVzZXIiOiJCQzExOTE5My0xIn0.MGEuTNOnkfJZQuQkx-Bz5Gbfjt4A4Op23vsu2pHDHI4umeh6BEJRaeK4Mww4JTuotprvUDGffe14V0pq-DNNCA\"}"
+  },
+  {
+    "type": "response",
+    "status": 200,
+    "url": "https://lu88.moe/images/loyalty/remind/loyalty-remind-no-login.webp",
+    "headers": {
+      "content-encoding": "gzip",
+      "cf-cache-status": "HIT",
+      "etag": "W/\"ebb4-19d8b3e2ce8\"",
+      "age": "105224",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=lvQSaRDug00371%2ByBQOhLN0lPD17WUZV34U8iD1ZxHlSrMUvDpY7%2Bx9wPNiymI8GzcgcKDKNW%2FzNf8WeGazbWq1%2BfDvN9s2nfUxsFb9L3x5ZxYtQakRaNXFbjA%3D%3D\"}]}",
+      "expires": "Fri, 17 Apr 2026 11:19:20 GMT",
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "server-timing": "cfExtPri",
+      "date": "Wed, 15 Apr 2026 16:33:04 GMT",
+      "last-modified": "Tue, 14 Apr 2026 09:06:41 GMT",
+      "content-type": "image/webp",
+      "vary": "Accept-Encoding",
+      "priority": "u=3,i",
+      "x-frame-options": "SAMEORIGIN",
+      "cache-control": "max-age=259200",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "cf-ray": "9ecc5991c837210b-HKG",
+      "server": "cloudflare"
+    },
+    "body": "RIFF��\u0000\u0000WEBPVP8X\n\u0000\u0000\u0000\u0010\u0000\u0000\u0000�\u0001\u0000\u0011\u0001\u0000ALPH)/\u0000\u0000\u0001\u0019��$C5�~+��\u000f1D�\u0002@{��\f\r�-���G��1�����\u001d��hV��\f�Z�#s\u0014�m�$��z\u0007CD$8\u001d�mN��X�[�Ch�ZjEW�q\u001b�n�<0s�\u000e�*\u001c^��\u0004D\u001e��\u0007�g\u0011\u00130\u0001ްm;&Iڶm;���2Z�v��3���m�|l۶m�6ƞ���RF\\��#\"#+�\u0007\u0019\u000f�%\"&�\u001f������w��\u001fO\f3q�v�}�^��m۶m۶m���k�ںi<q�|�q�#i23M��\u0007�\u0011\u0011\u0013@��լ�Ŭ��?Ү��\u001fޮ��5�Y\u000f��@Qɂ�e\r#�;�\u0017����@�!fN\u0014ٽaY) %��\u0010\"�(�K�\u0000�Z�Z�N�\u000f�Җ&\u0003��E�Qs%\u0015 \u000b�`��\u000b\u0018\\\u000f�6���,��W\u00153\u0000\u0017\u0014\u0001�,\u0016\u0011,]\u0003X�2/;]E\u00154,)�<*�\"���\u0002����HvU\u0010A�Ĳ�#�\u0016��x\u0016\u000b\u0015(\u0004\u0005;a�\u0002\u0006�\\\r\u0004p\u001e\\��tU,T0Z,�f��\u0001\u0001��\u000e%�B3\u0007���ʼ�\u0014T$@:�Z\u0001b\b��n@-�\u0001�G\u0000��\u0000\u0014Ԃ\u0002\u001aH�]+\u000b%��\u0004w���U�\"0�j�X�\u0014!\u001dH�]��`�� �a�\n�\"��ܾ����\u0014jC\u0007�a�̃�W\u0018G\u0016\u0006Jq9\u0014�%�\u001d�/��\\i�B�\u0018H�\u001d�\u000e\u0001��\"�mFP�eP����\u0003\u0003��c,TK�\u0010�@:,L7a�,\u0014��\u000e\u0018 \r&�\u0013%:�\u0002�.���J\u0005B7�\u0000�;,);��ف\u001dCHj�\u0005�V�(�\u0005��Z�*kВn�4�\r�\u000e��`�0\u000bv\u001b�\u0000%��`��|\u0014r�ʰ��\u0018B�FH��m\u0018\u0005Ī�aR�\u000e!#0��`�f�Y\nH(@a@�\u0006�\u0002�`$�;p�[^�\u0006�\u0000\u0014@�\u0001x\u0012�ʹbM�)VG��6�Љ�8@��*�9!\bD�U\u0001@�\u0000E \u0005\u0006\u001b\f��5�P\b�\f�\r����!�P�T]�b�\b\u0013H4�֤5I~y�,�\u001e�F$U�b��\u001d4vAw���9%QI�6\u00001�\u0001�\u00141�\u0019L���E\u0003\u0002\n�����H���wҫ�1\u001e�8;F��\u0000$\u0004�G+�\u0007Yw��׭Xmm1������\f6�4c��J���n\u0005�\n\u0010@�|�\u0016�H�\u001b�PL`\u0006�bV�E\u0004\u0004��B�\u0005\u001d�\u0011�>e|\\�\u000eE�]7�+%�\u0002�\u0011�1fj��j.��3˫m\u000e�S�P\r\u0001:$R�g,o0BpN\"QG$��\u0000\u0002\u0004$�\u0001+\u00130@Ċ��\u0010D!\b\u001a\u0000����Av���\u000b1\u0000�B�C�^̊o�\u0016��\u0005F�0�oC֮yJ�w�~�AҦ�FS5jKf\u0018MH͚�%\u001a\u0012�\u0018\u0013��\u001d�\u0003d;�2�\u0019\f�X\u0019L\"$�\u0012��ؙ��3g>�ֺr\u000b��ت�f$f�Q!m\u001f����u�-�H\f\f9ƕ�F!��m=@{R\u0003fp�\u001e2��Z�3cy#��\u00120\u0012�\u001a%\u0006�\fK\nd; �P\fR��P&\u000b�P\u001d\u001f�o��\u001f}�\r+W\u0003o�x��0/v\fF\u0012q\"lw9�;��B`�\b��]_z��\\^�\u0011�'\u0000�\b�q&�@e\u0016�����\u0001�`kR�a�\u0002�6\u0000e\u001aD�J�\"À����3��nq=s%\u0013čȑ���\u0004\u001a���M�������\u000eؒ8��9\u0017*Y}��~(��ԐqFb\u0017ɔ兰�\u0011��(\t\u0015\f!��\u0016�0�i\u00111\u001b�$�c��ʿ\f���ՙ��b�r�ÆǓعf��YH\u0017�¤\u00015��\\_��7���\f\u001a\u0010\u0003\u001bvS��z��\u0012�\u0016�` ,��h$d9\b��HD\u0004 �&R�X\u000e\u001d�\u0015ޓ�����RW�����h�ʫ\u001bq��>2�ҫצ\u001f�\u0013��\u0014\u0002\u0003�\nL3����\u0018\u0013����\u0004�1\b�l\u0007 V\u0006�\u000fC\u0000P�\"e�]�=X��nb��\r�\u0018\u001c��.��Wyq�!�\u0013��k�-��M�]�]=�\u0010\u0014�Yj�ؙ�����\u0018\u0002`��(0�*� �\u0001\u0015�C��e�\bꞯ\u0001�#]c��{����\u000b˝��\u000bg�h�S�3\u0012W\u0006�����}}v�M�]\u0019b�d\u0016a3�Ͳ����\u0000\u0018��\b�M\f�B\b;�l\"6\"�XT��57\u0000\t\u001f\u001e=\u001cϦ��\r߽�u���L410�\u0002赛7\"�2���\u0007�^5�<�����\nhIө�t:)4\t`���\u0000�@\u000fM\u0004�\u0004\b�\u0006\t�\u0003\u0004BlD��(Ao��>\u0019��F\u0002I�n���BG\"�x�FS]{\u001bB�\u0000P����Q�t�\u000f�&��7�\u0000AH�k\u0002T��d�\u001e��q�J!�\u0010\u0016\u000b\u0004\u0010\u0003A\u0010\u0010�fel\f\u0010\u0010\u0003��F4��\u0002�L��<y�^J��\u0019��H(GzΣ�B\u000f\u0011B����\u000b� ��[�J�Z~�\\���\u0012�~L\tE\u000f]�8&C\u0001L��0\u0014�N�\u001d�\u0000\u0002\u0001\u0014Ck�T���J$\u0004�@\u0000�2\u0013�8\u0003��]C\u0003X\u001f8�\u0018(�C�v�d\u001c-)\u0004@\bM��雖a*�MO�ގ�����ba�/�X=\u0019\r=v�2e�L���8K\u0007\u0010\u0002\b\u0004���\u0002��\u0001\u0003\u0004R1a�\b�\u0011O%\u0014@<�\u001fփ�[���utl�m�]���l�l�\b�"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "https://cdn.files-text.com/us-south1/api/lc/main/18230724/greeting/1ba83878b0404ba879cc810afd3a3f5f.png",
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://secure.livechatinc.com/",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "accept-language": "vi-VN",
+      "sec-ch-ua-mobile": "?0"
+    },
+    "postData": null
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "https://cdn.files-text.com/us-south1/api/lc/img/18230724/4ef80d4ee76ed424e16fd1e3824925c3.png",
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "accept-language": "vi-VN",
+      "sec-ch-ua-mobile": "?0"
+    },
+    "postData": null
+  },
+  {
+    "type": "response",
+    "status": 200,
+    "url": "https://cdn.files-text.com/us-south1/api/lc/img/18230724/4ef80d4ee76ed424e16fd1e3824925c3.png",
+    "headers": {
+      "access-control-allow-origin": "*",
+      "content-length": "22896",
+      "date": "Wed, 15 Apr 2026 16:33:12 GMT",
+      "content-type": "image/png"
+    },
+    "body": "�PNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR\u0000\u0000\u0000�\u0000\u0000\u0000�\b\u0003\u0000\u0000\u0000����\u0000\u0000\u0003\u0000PLTE�|B�yC%\u001c\u001e�wC\u0017\u0010\u0010�uB* \"$\u0013\u0011\u001c\u0011\u0011\u001d\u0015\u0015!\u0018\u001a�{B \u0012\u0010�]<�`;\u0011\r\u000eH%\u0019�Y9;/1�I/�f=�rB�i>�W8�~C.#&�L/�S5O(\u001a?34�R2�_>~F-�o@*\u0015\u0011��h5*-�U7�M0�N2�P1�TʃF�W4D\"\u00174\u001a\u0015��l�k=.\u0018\u0014��]��d��b��WJ(\u001d@ \u0016�q@�[9G87(\u0018\u0016�D3'*��o9\u001d\u0015S+\u001dl=*�A�c;�K/�\\=8 \u001cU)\u001bˁC�Q4q?+�e@e7&H.�s@;,,�zAs:(�U3t=(�b?t@*�N/΂CM%\u0019�R�lBQ*\u001c@0/P=:�M�A�Pc6%@$\u001fj:'O)\u001ea4$�iC܂>S.!�qD^2\"��X�x@(\u0013\u0011�Q73%&�O�nCwE-�M3��\\G41n7%�]:f9(\\0!�}>sC.�m>�G..\u001d\u001bW,\u001d�Z;�J0�>|E,�J.�}B�?�Ko=*�T3��G��F�W4X.\u001f[-\u001d��C`0\u001fT'\u001a�\\7�X6[/ /\u0016\u0011yH1�C4\u0018\u0013�JyA*e3\"uC+|J1:\u0019\u0014M4P82�V6p>)zC+K\"\u0018>\u001c\u0015XC>�V:�J0l;)�K0~B,�O0�w<�C,�p;�k;:)(k3$�R2��LߏHF\u001e\u0016i8$yF-|=*I.(�AzTE�a7uM=f0!n:%҄B`>3܍G��Sg6\"�L.�`@gH<a-\u001e㰋ՇDيE�h<٤�U\u001b\u001d\\7+a3!�b6����dM�}:�[H])\u001dӌOlC4촙�v9�?8̘z�^W�u?�>�HK�KI�z�ζ�0:ƍv�``�6>�01�nSj!'�wlo<%�rh�{W�j�ondbb����{A�K:l��씇���ۇhl���yA�}wy��b�������}}O\u0000\u0000\u0000\u0010caNv\u0000\u0000\u0000�\u0000\u0000\u0001,\u0000\u0000\u0000\u0000\u0000\u0000\u00004�M�?\u0000\u0000\u0001WzTXtRaw profile type xmp\u0000\u0000(��S[r�0\f��)z\u0004��9\u000e��_g���weh �I��%i����~���G<\"%��\u0017/V=[5u��r��՚s�\u0012�db�Ȕ�-���D���\u0006�πh�����u\u0007�2\u001b5��E��B9\u000e$\u0010�\u001b/J\"I�¿%CCq�ɼ���x�9��\r\n��\u0013�q�'�L\b\u0010���\u0004��3�B�\u0017�A\u0010�C�U��ir6F`\u001e��p�A�^\u0000_\b�p\"\u0014�F��%\u001dC���V/�\u001a��a7��?���\u0018m\u001a&����\u0001\u001e\u0004�f(/���,�\u001f�\u0016$1I�ƍ�\u000bl[\u000f����\\I�\u001b��\u0001+(�N�ށ�\u001dUQ�N�qa�\u0006\u0017n�ݠ��\nnL.�'�\u0019����F��\u001b��8��Q�ov$G���\u001bL��\u0000���L�\u0000\u0000\u0001�zTXtRaw profile type icc\u0000\u00008��S[n�0\b��)z\u00040��q\u0012;�z�\u000b\u0014�]���j�\"\u0014��x�廵�\u0015&�\u000b�Uh�\u0006\u0006ڀ3\u0002��4��5Ƶ�<d��\u0002عy��/*\r�\u000f\u0002\u001dEQ�ȀQ@�\u001bL{��φ�\u0006#\\�N�/f(d\u0003��.\rL\u0004q�\u000f<[g\u001a����'�7ەU��&�ɘj�U�\u0010p��Rf�\u0010��c�1TK��ߍW���\u0013�c%�ρ��\u001a�\u000f�Bľ\u0000�\u0019��\u0005���LԦo\u000e8�F]�ɺ�\u00014\u0015=Ed�Q�w���,���Vb�B�\u0010�?����ܧ���ԈoH~HG�\u001a�/�ycu�\u001eP�0\u0006\u0010���&����LD��\u0014��\f��x2\\^~7�f/\u0017�U�?\u0016K�B���s]^M���ǎ9nĶ�jX�t\"\u001f�\u0002a�w�o�*��l\u001c\n�۫Dt���d\u0006��\b#���n�h�n����}��L=\u00196W��\u00000���\u0004\u0012�\u0016\u0000\u0000 \u0000IDATx�l��OSi\u001a\u0007�\u000be\u0002m�\u0003)P(CS�\u0016N8&��J\nk-T�-B\u0005�˒���n\u0015�T�u)]˰\b��rv�̪\u0014���\f�\u0000�\u0018\u0006\u0011e�P��\u001b/��/��;��y�sNi�y(j�\u0017������Q�`�\u001f�\u001f,.ν^t\\1{���ݻ�6�k���/��Olw��2M�F�ɲ��ռ:��q:���\u0002����c/:�%�uv~3�Tyܞ^__���\u0019�Y'��3\t��O3�\u0002?X�&RY�j\u001d�m�8�\u001a8�3��9D�\f�6�\u0012\b\u0004��r��j�-��˻�Ǎ`�c�^��j����Y��5�j�ٟ������94\u001aY6��!�:�g=D�\u0004��i/N\r���uK$ϭ\u0014enjU�󼨏AD\tQD3N\u001cc}��5�5����\u0014�A\u0010aDl�\n\u0002@�<_9�*�JT \u0003\u0015����\u0002f�W\u0019t���\u0010���\u0006\u0007(��n\f��vW�$H\u0010邝T��s�Z(L�O�P��$��v�6c\f��\u0005pC\u0018�,n�\u001e\u000fݙ\u0018�h9D\u0014C�\u0007\u0006xE�D\u0001\n����T�EG�\u001b�`?���KU��1��V��B�\f(�3J�"
+  },
+  {
+    "type": "response",
+    "status": 200,
+    "url": "https://cdn.files-text.com/us-south1/api/lc/main/18230724/greeting/1ba83878b0404ba879cc810afd3a3f5f.png",
+    "headers": {
+      "access-control-allow-origin": "*",
+      "content-length": "315262",
+      "date": "Wed, 15 Apr 2026 16:33:12 GMT",
+      "content-type": "image/png"
+    },
+    "body": "�PNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR\u0000\u0000\u0002�\u0000\u0000\u0002A\b\u0006\u0000\u0000\u0000����\u0000\u0000\u0000\u0001sRGB\u0000��\u001c�\u0000\u0000\u0000\u0004gAMA\u0000\u0000��\u000b�a\u0005\u0000\u0000\u0000\tpHYs\u0000\u0000\u000e�\u0000\u0000\u000e�\u0001�o�d\u0000\u0000��IDATx^�w�&�y��}�:�i����E\u0006��\b�9\u00071��he[Y�,˲-�O��}�,���ي�%ٖdI�\u0018DR��\t\u0012 \u0000\"紋�i�:T��Q�����b��\u0012Dx�静~������'J�\u0015ǳ\u0018���S/\b8��n�5 p\u001e����O\u000f\"�֕�㩰�;�N<�����eW�ϝ}�x&�I=s�z^���\u000eB\u0000y�\u0014g�g\t���O\r\u0011�V�\u0018b�!�\u0018b�!�\u0018b���!�\u001cb�!�\u0018b�!�\u0018�@^(��\u0011�I5��³�̧�+��xv���X�\u001f�m��g\u0015�Ps��*]��8�>q����;vwn�y���]\u0003\"�cƝc��\rCU�\u0010�>���G�m8���B��ZP�\u0018b�!Ί�t�-�lUx�χ\u0018�;��g/\u001d\u0012�!�\u0018b�!�\u0018b�!�\u000b��r�!�\u0018b�!�\u0018b��!�\u001cb�!��x~j��\u0018b�!��x�;�\u001b�=���h�{~���r�9_8?usv\u001b^\u0001�Y�y&!r~�����vz�Z�.�9\\��|�׷��S{��yx\u001f9{�;\u00178�G�\u000b\u0010�z����o�\u0017\u0016���7�\u0010C\f1�\u0010C\f1�\u000b\u001cCb9�\u0010C\f1�\u0010C\f1�y��X\u000e1�\u0010C\f1�\u0010C\fq^0��<�x��x�o���N��{>���}n8������pz�z��X>�p^lB��8\u001f#shc9��\u001dռ�B���\u0018b�!�8�8\u001f\fl�!�xNcH,�\u0018�\u0005\u0000\u0017�~�C��\u0010C\f1�\u0010�\"\f��\u0010C�\u0000�V\u001cC\f1�\u0010C\f������<��b�u�q��z~�������\u000b�^i�xn���e9�\u0015��V��5m,y\u0016�X>;����jGx.}��p�����l°z����ɐX~\u0007�lY��+\u001c��!�|��� �.��刳\u001a�\u0018yrP\r��cǓJB\r����V �S'��aH,��N�����k���8C\f1�\u0010C\f1�\u0010C��0$�C�\u001f� ꩏��;����\u0010C\f1�\u0010�\u0004�W�r���t�!��\u0010�|\f񜃕�\u001fC\f1�\u0010C<�񜶱\\&��\u001f�3T\u0013��Ğ\u001f8��۹ؿ���l�3Xc����k����6�+7N竟?���� ��BW\u0018�X\u000e�c�\u0003\u000e�ƹ�1C|�q�\u0015�9��\u0012�s9Vb(���B�%u���c8�<\u001b�V���\u000e�u\f1�\u0010C\f���s�X���h�Ep\bwڡ��P=��KD=�6k�H�Z��2������5����!�\u0018b�!�x\u0001�9I,�\u0017�\u001c��PU���DP��>����\b��8P��\u0015�\u0016A�\u001a\u001c�p\n��X��<�X}�7��\u000e+�\\%������7�\u0010C\f1�\u0010�\u0017\u0012m[-�y��(�aa<�\\z~�t�:*�\u0002�<b�'r��lVۉ=����d�Wp��P\u0011� ?���\u0005�\u0019��\u0010\u0010�Ϝ�m�8�;�dН\u0012TX\u0010\u001c�\u001c�c����`�V�\r?s{�g�\u0015g��Sa�mՊ�{��\u001a-�)�Q��\u0000O��k�L�R��\u0011�����n\u0010~YacY\r��m����#�i�\\�y.�����\u000bg�#V�\u001c.\u0019�یs\tB���8\u000b�a��h��&�~�~�J\u001ep�!jy�Z��\u0015k�S,q�\u000e9��r+�\b�\u0017X�����(+�'�-\"(T\u0010�UDȓ\u0019O8W��;�8\u001b�jU�9���\u0002N��%X́��d��9O\"�떯�� \u0015)~\nX��3����ZeY-9\u0014���s�gA夳�6���L�\u0017�*cg�V}ǁ�6�>\r�O|�Xv\u0006���T�M�\u001fg���W7C�\u0019g\u001b���{v`�|=�7��k�Z\u0018\u0012ˀsZ؟W��T5i������Z���p��d�A-\u001e)�R��\\�s��b��9\u0019�K\t\u000b�\u000b75�Sx���\u0000X�����YQ����|s���Z\u0013~U��X�FvV`�D�T�\u001b��m$�g��'0$��\u0004�V��n�83�6~�������z�o\u000e�׮��$��Ke���'9A\u0002\u0019:I%�t�;�\b\u000e%^\u0011�¢䉥�v��d*ap\b2h�\u0012(M ��yʹ�u�\u001c8\u0014V�`C[�g�4q�P݃>�|;/�4�IEZ��.gj[�L�͗�p�c�M�\f\u0016��ɬ������j��<S�҆v<ߨ�wV~w\u001a\u0002y��\r�巈!�|6�l�wX�\u000e\f�巆�k�Zx�\u0010˕�\u001c\u0012˵�\u0017�S�O$�?�B�Xg�\u001a[P\n�(O$���\u0016��CkO$E\u0002���ŵ���?\u0017ሔx\u0012*\u000e��\u0014�X0A�n�`<�\f��s\t7X\u0012���)\u0004$�R�'e��˼)|\u000f�ҮF�,��\u0003A\u0001\u000e\u001bHmu���{)��X��\b�+O�g\u0005�]�\u001d%�\u0015�r��~���\u0004\u0007,o�\\\u0017bC��������\n\u001c����yO,}8\u0005���#��V�"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "https://cdn.files-text.com/us-south1/api/lc/main/18230724/greeting/1ba83878b0404ba879cc810afd3a3f5f.png",
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "accept-language": "vi-VN",
+      "sec-ch-ua-mobile": "?0"
+    },
+    "postData": null
+  },
+  {
+    "type": "response",
+    "status": 200,
+    "url": "https://cdn.files-text.com/us-south1/api/lc/main/18230724/greeting/1ba83878b0404ba879cc810afd3a3f5f.png",
+    "headers": {
+      "access-control-allow-origin": "*",
+      "content-length": "315262",
+      "date": "Wed, 15 Apr 2026 16:33:13 GMT",
+      "content-type": "image/png"
+    },
+    "body": "�PNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR\u0000\u0000\u0002�\u0000\u0000\u0002A\b\u0006\u0000\u0000\u0000����\u0000\u0000\u0000\u0001sRGB\u0000��\u001c�\u0000\u0000\u0000\u0004gAMA\u0000\u0000��\u000b�a\u0005\u0000\u0000\u0000\tpHYs\u0000\u0000\u000e�\u0000\u0000\u000e�\u0001�o�d\u0000\u0000��IDATx^�w�&�y��}�:�i����E\u0006��\b�9\u00071��he[Y�,˲-�O��}�,���ي�%ٖdI�\u0018DR��\t\u0012 \u0000\"紋�i�:T��Q�����b��\u0012Dx�静~������'J�\u0015ǳ\u0018���S/\b8��n�5 p\u001e����O\u000f\"�֕�㩰�;�N<�����eW�ϝ}�x&�I=s�z^���\u000eB\u0000y�\u0014g�g\t���O\r\u0011�V�\u0018b�!�\u0018b�!�\u0018b���!�\u001cb�!�\u0018b�!�\u0018�@^(��\u0011�I5��³�̧�+��xv���X�\u001f�m��g\u0015�Ps��*]��8�>q����;vwn�y���]\u0003\"�cƝc��\rCU�\u0010�>���G�m8���B��ZP�\u0018b�!Ί�t�-�lUx�χ\u0018�;��g/\u001d\u0012�!�\u0018b�!�\u0018b�!�\u000b��r�!�\u0018b�!�\u0018b��!�\u001cb�!��x~j��\u0018b�!��x�;�\u001b�=���h�{~���r�9_8?usv\u001b^\u0001�Y�y&!r~�����vz�Z�.�9\\��|�׷��S{��yx\u001f9{�;\u00178�G�\u000b\u0010�z����o�\u0017\u0016���7�\u0010C\f1�\u0010C\f1�\u000b\u001cCb9�\u0010C\f1�\u0010C\f1�y��X\u000e1�\u0010C\f1�\u0010C\fq^0��<�x��x�o���N��{>���}n8������pz�z��X>�p^lB��8\u001f#shc9��\u001dռ�B���\u0018b�!�8�8\u001f\fl�!�xNcH,�\u0018�\u0005\u0000\u0017�~�C��\u0010C\f1�\u0010�\"\f��\u0010C�\u0000�V\u001cC\f1�\u0010C\f������<��b�u�q��z~�������\u000b�^i�xn���e9�\u0015��V��5m,y\u0016�X>;����jGx.}��p�����l°z����ɐX~\u0007�lY��+\u001c��!�|��� �.��刳\u001a�\u0018yrP\r��cǓJB\r����V �S'��aH,��N�����k���8C\f1�\u0010C\f1�\u0010C��0$�C�\u001f� ꩏��;����\u0010C\f1�\u0010�\u0004�W�r���t�!��\u0010�|\f񜃕�\u001fC\f1�\u0010C<�񜶱\\&��\u001f�3T\u0013��Ğ\u001f8��۹ؿ���l�3Xc����k����6�+7N竟?���� ��BW\u0018�X\u000e�c�\u0003\u000e�ƹ�1C|�q�\u0015�9��\u0012�s9Vb(���B�%u���c8�<\u001b�V���\u000e�u\f1�\u0010C\f���s�X���h�Ep\bwڡ��P=��KD=�6k�H�Z��2������5����!�\u0018b�!�x\u0001�9I,�\u0017�\u001c��PU���DP��>����\b��8P��\u0015�\u0016A�\u001a\u001c�p\n��X��<�X}�7��\u000e+�\\%������7�\u0010C\f1�\u0010�\u0017\u0012m[-�y��(�aa<�\\z~�t�:*�\u0002�<b�'r��lVۉ=����d�Wp��P\u0011� ?���\u0005�\u0019��\u0010\u0010�Ϝ�m�8�;�dН\u0012TX\u0010\u001c�\u001c�c����`�V�\r?s{�g�\u0015g��Sa�mՊ�{��\u001a-�)�Q��\u0000O��k�L�R��\u0011�����n\u0010~YacY\r��m����#�i�\\�y.�����\u000bg�#V�\u001c.\u0019�یs\tB���8\u000b�a��h��&�~�~�J\u001ep�!jy�Z��\u0015k�S,q�\u000e9��r+�\b�\u0017X�����(+�'�-\"(T\u0010�UDȓ\u0019O8W��;�8\u001b�jU�9���\u0002N��%X́��d��9O\"�떯�� \u0015)~\nX��3����ZeY-9\u0014���s�gA夳�6���L�\u0017�*cg�V}ǁ�6�>\r�O|�Xv\u0006���T�M�\u001fg���W7C�\u0019g\u001b���{v`�|=�7��k�Z\u0018\u0012ˀsZ؟W��T5i������Z���p��d�A-\u001e)�R��\\�s��b��9\u0019�K\t\u000b�\u000b75�Sx���\u0000X�����YQ����|s���Z\u0013~U��X�FvV`�D�T�\u001b��m$�g��'0$��\u0004�V��n�83�6~�������z�o\u000e�׮��$��Ke���'9A\u0002\u0019:I%�t�;�\b\u000e%^\u0011�¢䉥�v��d*ap\b2h�\u0012(M ��yʹ�u�\u001c8\u0014V�`C[�g�4q�P݃>�|;/�4�IEZ��.gj[�L�͗�p�c�M�\f\u0016��ɬ������j��<S�҆v<ߨ�wV~w\u001a\u0002y��\r�巈!�|6�l�wX�\u000e\f�巆�k�Zx�\u0010˕�\u001c\u0012˵�\u0017�S�O$�?�B�Xg�\u001a[P\n�(O$���\u0016��CkO$E\u0002���ŵ���?\u0017ሔx\u0012*\u000e��\u0014�X0A�n�`<�\f��s\t7X\u0012���)\u0004$�R�'e��˼)|\u000f�ҮF�,��\u0003A\u0001\u000e\u001bHmu���{)��X��\b�+O�g\u0005�]�\u001d%�\u0015�r��~���\u0004\u0007,o�\\\u0017bC��������\n\u001c����yO,}8\u0005���#��V�"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "https://lu88.moe/gw/api/v2/game/jackpot",
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://lu88.moe/",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "accept": "application/json, text/plain, */*",
+      "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "accept-language": "vi-VN",
+      "sec-ch-ua-mobile": "?0"
+    },
+    "postData": null
+  },
+  {
+    "type": "response",
+    "status": 200,
+    "url": "https://lu88.moe/gw/api/v2/game/jackpot",
+    "headers": {
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-encoding": "br",
+      "cf-cache-status": "DYNAMIC",
+      "etag": "W/\"1b84-yWfbpVq3ysE3UTdCvq+nIlHhfyc\"",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=DMw%2F0Xy1kKnfDlZurWNq4HHe0Cab6NcPjE3X2p1T3wGWIwwRBF7iEq09z930xVzIAMSMn2gAtxtIjK606%2BHvYqAm9YIkE2KbHSkkL8HibG3T9oDjmepVWtUHPw%3D%3D\"}]}",
+      "cf-ray": "9ecc59d9994c210b-HKG",
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "server-timing": "cfExtPri",
+      "date": "Wed, 15 Apr 2026 16:33:15 GMT",
+      "content-type": "application/json; charset=utf-8",
+      "vary": "accept-encoding",
+      "server": "cloudflare",
+      "priority": "u=1,i"
+    },
+    "body": "{\"status\":\"OK\",\"code\":200,\"data\":{\"3996\":\"24061158\",\"kts9988\":\"143633000\",\"kts9897\":\"282724400\",\"kts9918\":\"1030320000\",\"kts9926\":\"520248250\",\"kts9976\":\"188541250\",\"kts9892\":\"1603600000\",\"kts9964\":\"6214102300\",\"kts9872\":\"305855000\",\"kts9864\":\"507258900\",\"kts9949\":\"963435000\",\"kts9984\":\"3224955000\",\"kts9843\":\"425850000\",\"kts9956\":\"52555000\",\"kts9886\":\"1692460000\",\"kts9928\":\"2489930000\",\"kts9974\":\"322320590\",\"kts9877\":\"728320000\",\"kts9878\":\"797477500\",\"kts9880\":\"544427360\",\"kts9951\":\"615570000\",\"kts9883\":\"6337160000\",\"kts9934\":\"513560000\",\"kts9855\":\"219565000\",\"kts9891\":\"123609675\",\"kts9874\":\"583480000\",\"kts9968\":\"1184470000\",\"kts9936\":\"31003150\",\"kts9930\":\"130870000\",\"kts9915\":\"887440000\",\"kts9825\":\"3010470000\",\"kts9977\":\"834184000\",\"kts9983\":\"155604060\",\"kts9856\":\"193618848\",\"kts9944\":\"50798000\",\"kts9908\":\"151380000\",\"kts9899\":\"28374800\",\"kts9850\":\"339860000\",\"kts9829\":\"624380000\",\"kts9862\":\"18424800\",\"kts9868\":\"516305500\",\"kts9992\":\"1028025000\",\"kts9858\":\"26554000\",\"kts9828\":\"849425000\",\"kts9959\":\"603411000\",\"kts9907\":\"789010040\",\"kts9831\":\"226965000\",\"kts9938\":\"25742400\",\"kts9834\":\"777350000\",\"kts9929\":\"522627200\",\"kts9853\":\"443550000\",\"kts5995\":\"137481000\",\"ktmn5995\":\"137481000\",\"kts9869\":\"2536895000\",\"kts9963\":\"54092500\",\"kts9914\":\"60000000\",\"kts9898\":\"10976510000\",\"kts9925\":\"270095000\",\"kts9966\":\"604735000\",\"kts9849\":\"491196000\",\"kts9933\":\"1606590000\",\"kts9865\":\"740510000\",\"kts9932\":\"105494000\",\"kts9982\":\"90991750\",\"kts9788\":\"599095000\",\"kts9904\":\"169897500\",\"kts9962\":\"1021839600\",\"kts9844\":\"345240000\",\"kts9910\":\"2318570000\",\"kts9927\":\"469090000\",\"kts9846\":\"1453896000\",\"kts9876\":\"3585290000\",\"kts9965\":\"2314625000\",\"kts9887\":\"219515000\",\"kts9875\":\"4554130000\",\"kts9847\":\"853780000\",\"kts9884\":\"512070000\",\"kts9987\":\"867922290\",\"kts9852\":\"4369205000\",\"kts9991\":\"617824241.79475356475450099\",\"kts9903\":\"1093850000\",\"kts9971\":\"263062200\",\"kts9881\":\"6787415000\",\"kts9889\":\"1022130000\",\"kts9890\":\"234175000\",\"kts9996\":\"59553913000\",\"kts6996\":\"16044000\",\"kts9895\":\"2671650000\""
+  }
+]

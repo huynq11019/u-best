@@ -1,4 +1,6 @@
 // T015 - 1xBet UI Adapter: login, warmUp, placeBet, hedgeLeg, voidLeg, getActiveOdds
+import fs from 'fs';
+import * as cheerio from 'cheerio';
 import { BaseAdapter, SportType } from './baseAdapter.js';
 import { childLogger } from '../config/logger.js';
 
@@ -7,12 +9,7 @@ const log = childLogger({ component: 'x1Adapter' });
 const LOGGED_IN_SELECTORS = [
   '.double-row-header-user-office-dropdown__trigger',
   '.double-row-header-user-office-dropdown',
-  '[class*="user-office-dropdown"]',
-  '[class*="header-user"]',
-  '[class*="balance"]',
-  '.user-control-dashboard-payment',
-  '.user-control-dashboard-ticket',
-  '.user-bonus-dropdown__btn',
+  '[class*="user-office-dropdown"]'
 ];
 
 const LOGIN_TRIGGER_SELECTORS = [
@@ -52,13 +49,13 @@ const LOGIN_ERROR_HINTS = [
  * Update path values if 1xBet changes their routing.
  */
 const SPORT_URL_MAP = {
-  [SportType.FOOTBALL]:   { path: 'football',   sportId: 1  },
-  [SportType.BASKETBALL]: { path: 'basketball',  sportId: 3  },
-  [SportType.TENNIS]:     { path: 'tennis',      sportId: 5  },
-  [SportType.BASEBALL]:   { path: 'baseball',    sportId: 11 },
-  [SportType.HOCKEY]:     { path: 'hockey',      sportId: 12 },
-  [SportType.VOLLEYBALL]: { path: 'volleyball',  sportId: 21 },
-  [SportType.ALL]:        { path: '',            sportId: null },
+  [SportType.FOOTBALL]: { path: 'football', sportId: 1 },
+  [SportType.BASKETBALL]: { path: 'basketball', sportId: 3 },
+  [SportType.TENNIS]: { path: 'tennis', sportId: 5 },
+  [SportType.BASEBALL]: { path: 'baseball', sportId: 11 },
+  [SportType.HOCKEY]: { path: 'hockey', sportId: 12 },
+  [SportType.VOLLEYBALL]: { path: 'volleyball', sportId: 21 },
+  [SportType.ALL]: { path: '', sportId: null },
 };
 
 /**
@@ -79,7 +76,7 @@ export default class X1Adapter extends BaseAdapter {
   async login(page) {
     log.info('1xBet: navigating to home page for login');
     const baseUrl = this.config.baseUrl || 'https://1xfun888bet.com/vi';
-    
+
     await page.goto(baseUrl, {
       waitUntil: 'domcontentloaded',
       timeout: 30000,
@@ -123,27 +120,27 @@ export default class X1Adapter extends BaseAdapter {
       await page.screenshot({ path: './error_screenshots/login_inputs_missing_' + Date.now() + '.png', fullPage: true });
       throw new Error('1xBet: login inputs not found. UI selector likely changed.');
     }
-    
+
     // Clear inputs first, then type to trigger validation events
     const usernameInput = page.locator(usernameSelector).first();
     const passwordInput = page.locator(passwordSelector).first();
-    
+
     await usernameInput.click({ delay: 50 });
     await usernameInput.fill('');
     await page.waitForTimeout(200); // short wait to let UI react
     await usernameInput.pressSequentially(this.config.username || '', { delay: 100 });
-    await usernameInput.dispatchEvent('input').catch(() => {});
-    await usernameInput.dispatchEvent('change').catch(() => {});
-    
+    await usernameInput.dispatchEvent('input').catch(() => { });
+    await usernameInput.dispatchEvent('change').catch(() => { });
+
     await passwordInput.click({ delay: 50 });
     await passwordInput.fill('');
     await page.waitForTimeout(200);
     await passwordInput.pressSequentially(this.config.password || '', { delay: 100 });
-    await passwordInput.dispatchEvent('input').catch(() => {});
-    await passwordInput.dispatchEvent('change').catch(() => {});
+    await passwordInput.dispatchEvent('input').catch(() => { });
+    await passwordInput.dispatchEvent('change').catch(() => { });
 
     await page.waitForTimeout(250);
-    
+
     // Verify inputs before submitting
     log.info(`1xBet: taking screenshot before submit to verify inputs`);
     await page.screenshot({ path: './error_screenshots/before_submit_' + Date.now() + '.png', fullPage: false });
@@ -152,8 +149,8 @@ export default class X1Adapter extends BaseAdapter {
     await page.click('.auth-form-fields__submit');
 
     log.info('1xBet: waiting for result (success indicator, redirect, or error message)');
-
-    const outcome = await this._waitForLoginOutcome(page, 30000);
+    // đợi không cần timeout
+    const outcome = await this._waitForLoginOutcome(page, 60000);
     if (outcome.status === 'error') {
       log.error({ errorMsg: outcome.message || 'Unknown error' }, '1xBet: login failed with error message');
       throw new Error(`Login failed: ${outcome.message || 'Unknown error'}`);
@@ -163,7 +160,7 @@ export default class X1Adapter extends BaseAdapter {
       log.error({ loginUrl: page.url() }, '1xBet: login timed out without explicit success/error signal');
       throw new Error('Login timed out waiting for success or failure indicator');
     }
-    
+
     log.info('1xBet: login complete');
     this._isLoggedIn = true;
 
@@ -180,6 +177,7 @@ export default class X1Adapter extends BaseAdapter {
     for (const selector of LOGGED_IN_SELECTORS) {
       const visible = await page.locator(selector).first().isVisible().catch(() => false);
       if (visible) {
+        log.info({ selector }, '1xBet: logged-in selector matched');
         return true;
       }
     }
@@ -248,9 +246,9 @@ export default class X1Adapter extends BaseAdapter {
     log.info('1xBet: warming up — navigating to live betting page');
     const baseUrl = this.config.baseUrl || 'https://1xfun888bet.com/vi';
     // Append /live to base URL, handling if it already ends with /vi or has a trailing slash
-    const liveUrl = baseUrl.endsWith('/vi') ? baseUrl + '/live' : 
-                   (baseUrl.endsWith('/') ? baseUrl + 'live' : baseUrl + '/live');
-    
+    const liveUrl = baseUrl.endsWith('/vi') ? baseUrl + '/live' :
+      (baseUrl.endsWith('/') ? baseUrl + 'live' : baseUrl + '/live');
+
     await page.goto(liveUrl, {
       waitUntil: 'domcontentloaded',
       timeout: 30000,
@@ -325,9 +323,9 @@ export default class X1Adapter extends BaseAdapter {
 
     await page.goto(liveUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // Wait for live game cards to appear.
+    // Wait for live game cards to appear and markets to be loaded
     await page.waitForSelector(
-      'div.dashboard-game, div.dashboard-game-block, div.dashboard-champ__game',
+      '.dashboard-game .ui-market, .dashboard-game .dashboard-markets__market, .dashboard-game-block .ui-market, .dashboard-game-block .dashboard-markets__market',
       { state: 'visible', timeout: 15000 }
     ).catch(() => {
       log.warn('1xBet: getActiveOdds — event container not found, page may be empty or have different structure');
@@ -336,92 +334,91 @@ export default class X1Adapter extends BaseAdapter {
     // Small settle delay so dynamic content finishes rendering
     await page.waitForTimeout(1500);
 
-    // Scrape live rows using the current dashboard-game + dashboard-markets DOM.
-    const odds = await page.evaluate((scopeLabel) => {
-      const results = [];
+    let html = '';
+    try {
+      html = await page.content();
+      fs.writeFileSync('x1_live_dump.html', html);
+      log.info('1xBet: Dumped HTML to x1_live_dump.html for debugging');
+    } catch (e) {
+      log.error('Failed to dump HTML: ' + e.message);
+    }
 
-      const gameBlocks = document.querySelectorAll('div.dashboard-game-block, .dashboard-game-block');
+    // Scrape live rows using cheerio instead of page.evaluate
+    const $ = cheerio.load(html);
+    const results = [];
 
-      gameBlocks.forEach((block, gameIndex) => {
-        try {
-          const game = block.closest('.dashboard-game, .dashboard-champ__game') || block.parentElement || block;
+    const gameBlocks = $('div.dashboard-game, div.dashboard-game-block, div.dashboard-champ__game');
+    log.info({ count: gameBlocks.length }, '1xBet: gameBlocks');
+    gameBlocks.each((index, blockEl) => {
+      try {
+        const block = $(blockEl);
+        const game = block.closest('.dashboard-game, .dashboard-champ__game').length
+          ? block.closest('.dashboard-game, .dashboard-champ__game')
+          : block.parent();
 
-          // Teams are rendered as two dashboard-game-team-info__name nodes.
-          const teamNameNodes = Array.from(
-            block.querySelectorAll('.dashboard-game-team-info__name, .ui-team-score-name, .dashboard-game-block__team')
-          );
-          const teamNames = [];
-          teamNameNodes.forEach((node) => {
-            const text = (node.textContent || '').trim().replace(/\s+/g, ' ');
-            if (!text) {
-              return;
-            }
-            if (!teamNames.includes(text)) {
-              teamNames.push(text);
-            }
-          });
-
-          const home = teamNames[0] || 'Unknown';
-          const away = teamNames[1] || 'Unknown';
-
-          const league = (
-            game.closest('.dashboard-champ')
-              ?.querySelector('.dashboard-champ__label, .dashboard-champ__title, .dashboard-champ__name')
-              ?.textContent || ''
-          ).trim();
-
-          const linkEl = block.querySelector('a.dashboard-game-block__link, a[href*="/live/"]');
-          const href = linkEl ? (linkEl.getAttribute('href') || '') : '';
-          const eventId =
-            game.getAttribute('data-game-id')
-            || block.getAttribute('data-game-id')
-            || block.getAttribute('data-event-id')
-            || (href ? href.split('/').filter(Boolean).pop() : '')
-            || `game-${gameIndex + 1}`;
-
-          const startTime = (
-            block.querySelector('.dashboard-game-info__time, [class*="game-info__time"]')?.textContent || ''
-          ).trim();
-
-          const marketNodes = game.querySelectorAll('.dashboard-markets__market, .ui-market');
-          const selections = [];
-          const defaultLabels = ['1', 'X', '2'];
-          marketNodes.forEach((node, idx) => {
-            const valueText = (
-              node.querySelector('.ui-market__value, [class*="market__value"], [class*="coef"], [class*="odd"]')
-                ?.textContent || node.textContent || ''
-            )
-              .trim()
-              .replace(/,/g, '.');
-
-            const rawOdds = parseFloat(valueText);
-            if (rawOdds > 1) {
-              const explicitLabel =
-                (node.querySelector('.ui-market__label, [class*="label"], [class*="title"]')?.textContent || '').trim();
-              selections.push({ label: explicitLabel || defaultLabels[idx] || `sel_${idx + 1}`, odds: rawOdds });
-            }
-          });
-
-          if ((home !== 'Unknown' || away !== 'Unknown') && selections.length > 0) {
-            results.push({
-              eventId,
-              sport: scopeLabel,
-              home,
-              away,
-              league: league || '',
-              marketType: '1X2',
-              startTime,
-              selections,
-              scope: 'live',
-            });
+        // Extract teams
+        const teamNameNodes = block.find('.dashboard-game-team-info__name, .ui-team-score-name, .dashboard-game-block__team');
+        const teamNames = [];
+        teamNameNodes.each((_, node) => {
+          const text = $(node).text().trim().replace(/\s+/g, ' ');
+          if (text && !teamNames.includes(text)) {
+            teamNames.push(text);
           }
-        } catch (_) {
-          // Skip malformed cards silently.
-        }
-      });
+        });
 
-      return results;
-    }, sportType);
+        const home = teamNames[0] || 'Unknown';
+        const away = teamNames[1] || 'Unknown';
+
+        // Extract league
+        const league = game.closest('.dashboard-champ')
+          .find('.dashboard-champ__label, .dashboard-champ__title, .dashboard-champ__name')
+          .first().text().trim();
+
+        const linkEl = block.find('a.dashboard-game-block__link, a[href*="/live/"]');
+        const href = linkEl ? (linkEl.attr('href') || '') : '';
+        const eventId = game.attr('data-game-id')
+          || block.attr('data-game-id')
+          || block.attr('data-event-id')
+          || (href ? href.split('/').filter(Boolean).pop() : '')
+          || `game-${index + 1}`;
+
+        const startTime = block.find('.dashboard-game-info__time, [class*="game-info__time"]').first().text().trim();
+
+        const marketNodes = game.length ? game.find('.dashboard-markets__market, .ui-market') : block.find('.ui-market');
+        const selections = [];
+        const defaultLabels = ['1', 'X', '2'];
+
+        marketNodes.each((idx, node) => {
+          const mNode = $(node);
+          const valueTextEl = mNode.find('.ui-market__value, [class*="market__value"], [class*="coef"], [class*="odd"]');
+          const valueText = (valueTextEl.length ? valueTextEl.text() : mNode.text()).trim().replace(/,/g, '.');
+
+          const rawOdds = parseFloat(valueText);
+          if (!isNaN(rawOdds) && rawOdds > 1) {
+            const explicitLabel = mNode.find('.ui-market__label, [class*="label"], [class*="title"]').text().trim();
+            selections.push({ label: explicitLabel || defaultLabels[idx] || `sel_${idx + 1}`, odds: rawOdds });
+          }
+        });
+
+        if ((home !== 'Unknown' || away !== 'Unknown') && selections.length > 0) {
+          results.push({
+            eventId,
+            sport: sportType,
+            home,
+            away,
+            league: league || '',
+            marketType: '1X2',
+            startTime,
+            selections,
+            scope: 'live',
+          });
+        }
+      } catch (_) {
+        // Skip malformed cards silently
+      }
+    });
+
+    const odds = results;
 
     log.info({ sportType, count: odds.length }, '1xBet: getActiveOdds complete');
     return odds;
