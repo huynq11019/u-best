@@ -1,0 +1,11 @@
+const fs = require('fs');
+const { JSDOM } = require('jsdom');
+const html = fs.readFileSync('sportsFrameNormalHack.html', 'utf8');
+const dom = new JSDOM(html);
+const document = dom.window.document;
+const matches = document.querySelectorAll('.c-match');
+const m = matches[0];
+const teams = m.querySelectorAll('.c-match__team');
+teams.forEach(t => console.log('Team:', t.textContent.trim()));
+const odds = m.querySelectorAll('.c-match__odds');
+odds.forEach(o => console.log('Odds:', o.textContent.trim(), 'data-odds-status:', o.getAttribute('data-odds-status')));

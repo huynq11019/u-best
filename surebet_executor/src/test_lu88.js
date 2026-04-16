@@ -51,17 +51,22 @@ async function main() {
     // ── Step 1: Login ──────────────────────────────────────────────────────────
     console.log('[1/3] Running adapter.login()...');
     await adapter.login(page);
-    console.log('      ✓ Login completed\n');
+    console.log(`      ✓ Login completed`);
+    console.log(`      Token acquired: ${adapter._authToken ? 'yes' : 'no'}\n`);
 
     // ── Step 2: Warm up (fetch SportV URL) ────────────────────────────────────
     console.log('[2/3] Running adapter.warmUp()...');
     await adapter.warmUp(page);
     console.log(`      ✓ Warm-up completed`);
-    console.log(`      SportV URL: ${adapter._sportvGameUrl || '(not captured)'}\n`);
+    console.log(`      DepositProcessLogin URL: ${adapter._sportvGameUrl || '(not captured)'}`);
+    console.log(`      Final browser URL: ${page.url()}\n`);
 
     // ── Step 3: Get active odds (stub) ────────────────────────────────────────
     console.log('[3/3] Running adapter.getActiveOdds()...');
     const odds = await adapter.getActiveOdds(page);
+    const ouOdds = odds.filter(o => o.marketId === 'Over/Under');
+    console.log('--- Over/Under Odds ---');
+    console.log(ouOdds.slice(0, 5));
     console.log(`      ✓ getActiveOdds returned ${odds.length} records\n`);
 
     console.log('=== All steps passed ===');

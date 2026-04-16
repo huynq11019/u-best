@@ -1,5 +1,8 @@
 // Lu88 bookmaker adapter
-// Login flow: POST /gw/api/v2/auth/login → JWT cookie → GET /gw/api/v2/game/url → SportV odds URL
+// API-first flow:
+// 1) POST /gw/api/v2/auth/login to get JWT token
+// 2) GET /gw/api/v2/game/url with Authorization: Bearer <token>
+// 3) page.goto(DepositProcessLogin URL) and follow redirects to final SportV page
 import { BaseAdapter, SportType } from './baseAdapter.js';
 import { childLogger } from '../config/logger.js';
 
@@ -7,242 +10,140 @@ const log = childLogger({ component: 'lu88Adapter' });
 
 const BASE_URL = 'https://lu88.moe';
 
-/**
- * API endpoints
- */
-const API = {
-  login: `${BASE_URL}/gw/api/v2/auth/login`,
-  gameUrl: `${BASE_URL}/gw/api/v2/game/url`,
-  userInfo: `${BASE_URL}/gw/api/v2/user/info`,
-};
-
-/**
- * CSS selectors for UI detection.
- *
- * Đăng nhập modal structure:
- *   - Login trigger button: button.bg-pri-main (yellow button in header)
- *   - Username input: #username-login-input
- *   - Password input: #password-login-input
- *   - Submit button: button.bg-pri-main inside modal (text "Đăng nhập")
- *   - Success indicator: header shows logged-in username
- */
-const SELECTORS = {
-  // Login trigger in the top-right header area (yellow "Đăng nhập" button)
-  loginTrigger: [
-    "//button[text()='Đăng nhập']"
-  ],
-
-  // Login form fields (inside the modal)
-  usernameInput: '#username-login-input',
-  passwordInput: '#password-login-input',
-
-  // Submit button inside the modal
-  submitButton: [
-    '.modal button[type="submit"]',
-    '[class*="modal"] button.bg-pri-main',
-    '[class*="modal"] button:has-text("Đăng nhập")',
-    'form button[type="submit"]',
-  ],
-
-  // Indicators that user is already logged in
-  loggedInIndicators: [
-    // Header shows username after login (e.g. "mikamika")
-    '[class*="header"] [class*="username"]',
-    '[class*="header"] [class*="user-name"]',
-    '[class*="header-account"]',
-    '[class*="balance"]',
-    // Deposit/withdrawal buttons visible for logged-in users
-    'button:has-text("Nạp tiền")',
-    'a:has-text("Nạp tiền")',
-    // Avatar or profile area
-    '[class*="avatar"]',
-    '[class*="user-avatar"]',
-  ],
-
-  // Error messages in the login modal
-  errorMessages: [
-    '[class*="error"]:visible',
-    '[class*="alert"]:visible',
-    '.text-red:visible',
-    '[class*="text-danger"]:visible',
-  ],
-};
-
-/**
- * Error hint strings that indicate login failure.
- */
-const LOGIN_ERROR_HINTS = [
-  'sai tên người dùng',
-  'sai mật khẩu',
-  'tài khoản không tồn tại',
-  'incorrect',
-  'invalid',
-  'wrong',
-  'không đúng',
-  'lỗi',
-];
-
-/**
- * SportV game URL query params for getting the odds page.
- * partner_provider=sportv gives access to the live sports odds listing.
- */
 const SPORTV_GAME_URL_PARAMS = {
   partner_provider: 'sportv',
-  partner_game_type: '',
+  partner_game_type: 'sport',
   home: 'https://lu88.moe?ref_domain=false',
   device: 'pc',
 };
 
-/**
- * Lu88 bookmaker adapter.
- *
- * ## Login flow
- * 1. Navigate to https://lu88.moe
- * 2. Check if already logged in via cookie/session
- * 3. If not logged in → click the yellow "Đăng nhập" header button
- * 4. Fill in #username-login-input and #password-login-input
- * 5. Click submit → POST /gw/api/v2/auth/login
- * 6. Verify login succeeded (header updates to show username)
- *
- * ## Odds flow (warmUp)
- * 1. Call GET /gw/api/v2/game/url?partner_provider=sportv&... 
- * 2. Response: { status: "OK", data: "https://c0z0ob.bps6mxnb.com/..." }
- * 3. Navigate to that URL in the page to access the SportV odds listing
- */
 export default class Lu88Adapter extends BaseAdapter {
   constructor(bookmakerKey, bookkieConfig) {
     super(bookmakerKey, bookkieConfig);
-    this._sportvGameUrl = null; // cached SportV iframe URL after warmUp
+    this._authToken = null;
+    this._sportvGameUrl = null;
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // login
-  // ────────────────────────────────────────────────────────────────────────────
+  _buildApiUrls() {
+    const baseUrl = (this.config.baseUrl || BASE_URL).replace(/\/$/, '');
+    return {
+      login: `${baseUrl}/gw/api/v2/auth/login`,
+      gameUrl: `${baseUrl}/gw/api/v2/game/url`,
+      userInfo: `${baseUrl}/gw/api/v2/user/info`,
+      baseUrl,
+    };
+  }
 
   /**
-   * Log in to Lu88 and establish an authenticated session.
+   * Log in to Lu88 via API and cache Bearer token.
    * @param {import('playwright').Page} page
    */
   async login(page) {
-    log.info('Lu88: navigating to home page');
-    const baseUrl = this.config.baseUrl || BASE_URL;
+    log.info('Lu88: logging in via API');
 
-    await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    const { login: loginUrl, baseUrl } = this._buildApiUrls();
+    await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
 
-    // Let React/SPA finish rendering (2s is typical for this site)
-    await page.waitForTimeout(2000);
-
-    // ── Check if already authenticated ──
     if (await this._checkIsLoggedIn(page)) {
-      log.info('Lu88: already logged in — skipping authentication');
+      log.info('Lu88: existing API token is still valid');
       this._isLoggedIn = true;
       return;
     }
 
-    // ── Open login modal ──
-    log.info('Lu88: opening login modal');
-    const triggerSelector = await this._findVisibleSelector(page, SELECTORS.loginTrigger, 8000);
-
-    if (!triggerSelector) {
-      await this._saveErrorScreenshot(page, 'login_trigger_missing');
-      throw new Error('Lu88: login trigger button not found in header.');
+    if (!this.config.username || !this.config.password) {
+      throw new Error('Lu88: missing credentials (LU88_USERNAME/LU88_PASSWORD)');
     }
 
-    await page.click(triggerSelector);
-    log.info('Lu88: login modal opened');
+    let result;
+    try {
+      result = await page.evaluate(async ({ url, username, password }) => {
+        const resp = await fetch(url, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, password }),
+        });
 
-    // Wait for the login form to appear
-    await page.waitForSelector(SELECTORS.usernameInput, { state: 'visible', timeout: 8000 }).catch(() => null);
-
-    // ── Fill credentials ──
-    log.info('Lu88: filling in credentials');
-    const usernameVisible = await page.locator(SELECTORS.usernameInput).isVisible().catch(() => false);
-
-    if (!usernameVisible) {
-      await this._saveErrorScreenshot(page, 'login_inputs_missing');
-      throw new Error('Lu88: login form inputs not visible after opening modal.');
+        return {
+          status: resp.status,
+          body: await resp.text(),
+        };
+      }, {
+        url: loginUrl,
+        username: this.config.username,
+        password: this.config.password,
+      });
+    } catch (err) {
+      log.error({ err: err.message }, 'Lu88: login API request failed');
+      await this._saveErrorScreenshot(page, 'login_api_request_failed');
+      throw new Error(`Lu88: login API request failed - ${err.message}`);
     }
 
-    const usernameInput = page.locator(SELECTORS.usernameInput).first();
-    const passwordInput = page.locator(SELECTORS.passwordInput).first();
-
-    await usernameInput.click({ delay: 50 });
-    await usernameInput.fill('');
-    await usernameInput.pressSequentially(this.config.username || '', { delay: 80 });
-
-    await passwordInput.click({ delay: 50 });
-    await passwordInput.fill('');
-    await passwordInput.pressSequentially(this.config.password || '', { delay: 80 });
-
-    await page.waitForTimeout(300);
-    await this._saveErrorScreenshot(page, 'before_submit');
-    log.info('Lu88: submitting login form');
-
-    // ── Submit ──
-    const submitSelector = await this._findVisibleSelector(page, SELECTORS.submitButton, 5000);
-    if (submitSelector) {
-      await page.click(submitSelector);
-    } else {
-      // Fallback: press Enter
-      await passwordInput.press('Enter');
+    let payload = null;
+    try {
+      payload = result.body ? JSON.parse(result.body) : null;
+    } catch (_) {
+      payload = null;
     }
 
-    // ── Wait for outcome ──
-    log.info('Lu88: waiting for login outcome');
-    const outcome = await this._waitForLoginOutcome(page, 30000);
-
-    if (outcome.status === 'error') {
-      log.error({ message: outcome.message }, 'Lu88: login failed');
-      throw new Error(`Lu88: login failed — ${outcome.message || 'Unknown error'}`);
+    if (result.status < 200 || result.status >= 300) {
+      const serverMessage = payload?.message || payload?.status || result.body || 'unknown error';
+      log.error({ status: result.status, serverMessage }, 'Lu88: login API returned non-2xx');
+      await this._saveErrorScreenshot(page, 'login_api_non_2xx');
+      throw new Error(`Lu88: login API failed (${result.status}) - ${serverMessage}`);
     }
 
-    if (outcome.status === 'timeout') {
-      await this._saveErrorScreenshot(page, 'login_timeout');
-      throw new Error('Lu88: login timed out waiting for success indicator');
+    if (!payload || payload.status !== 'OK' || !payload.data?.token) {
+      log.error({ payload }, 'Lu88: login API invalid response');
+      await this._saveErrorScreenshot(page, 'login_api_invalid_response');
+      throw new Error('Lu88: login API response missing token');
     }
 
-    log.info('Lu88: login successful');
+    this._authToken = payload.data.token;
     this._isLoggedIn = true;
+    log.info('Lu88: API login successful, token acquired');
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // warmUp
-  // ────────────────────────────────────────────────────────────────────────────
-
   /**
-   * After login, call the game URL API to obtain the SportV odds page URL
-   * and navigate to it so the page is primed for odds scraping.
+   * Call game/url with Bearer token and navigate to returned DepositProcessLogin URL.
    * @param {import('playwright').Page} page
    */
   async warmUp(page) {
-    log.info('Lu88: warming up — fetching SportV game URL');
+    log.info('Lu88: warming up via API — fetching SportV game URL');
 
-    // If we are on the SportV domain already, navigate back to Lu88 first
-    // so the fetch to /gw/api/v2/game/url won't fail due to CORS.
-    const currentUrl = page.url();
-    const isOnSportV = currentUrl.includes('bpjp45ee.com') || currentUrl.includes('bps6mxnb.com');
-    if (isOnSportV) {
-      log.info('Lu88: on SportV domain — navigating back to Lu88 to fetch game URL');
-      const baseUrl = this.config.baseUrl || BASE_URL;
-      await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.waitForTimeout(1500);
+    if (!this._authToken) {
+      throw new Error('Lu88: missing auth token, login() must run before warmUp()');
     }
 
+    const { gameUrl } = this._buildApiUrls();
     const qs = new URLSearchParams(SPORTV_GAME_URL_PARAMS).toString();
-    const apiUrl = `${API.gameUrl}?${qs}`;
+    const apiUrl = `${gameUrl}?${qs}`;
 
-    // Use page.evaluate so the request carries the session cookies automatically
     let result;
     try {
-      result = await page.evaluate(async (url) => {
+      result = await page.evaluate(async ({ url, token }) => {
         const resp = await fetch(url, {
+          method: 'GET',
           credentials: 'include',
-          headers: { 'Accept': 'application/json' },
+          headers: {
+            Accept: 'application/json, text/plain, */*',
+            Authorization: `Bearer ${token}`,
+          },
         });
-        return { status: resp.status, body: await resp.text() };
-      }, apiUrl);
+
+        return {
+          status: resp.status,
+          body: await resp.text(),
+        };
+      }, {
+        url: apiUrl,
+        token: this._authToken,
+      });
     } catch (err) {
-      log.warn({ err: err.message }, 'Lu88: warmUp fetch failed — trying direct navigation');
+      log.warn({ err: err.message }, 'Lu88: game URL API request failed');
       result = { status: 0, body: '' };
     }
 
@@ -252,39 +153,35 @@ export default class Lu88Adapter extends BaseAdapter {
     if (result.status === 200) {
       try {
         const parsed = JSON.parse(result.body);
-        if (parsed.status === 'OK' && parsed.data) {
-          sportvUrl = parsed.data;
+        if (parsed.status === 'OK' && typeof parsed.data === 'string' && parsed.data.length > 0) {
+          sportvUrl = parsed.data.replace('act=Virtualsports', 'act=sports');
           this._sportvGameUrl = sportvUrl;
-          log.info({ sportvUrl }, 'Lu88: SportV game URL obtained');
+          log.info({ sportvUrl }, 'Lu88: received DepositProcessLogin URL');
         } else {
           log.warn({ parsed }, 'Lu88: unexpected game URL API response format');
         }
       } catch (err) {
-        log.warn({ err: err.message, body: result.body }, 'Lu88: failed to parse game URL response');
+        log.warn({ err: err.message, body: result.body }, 'Lu88: failed to parse game URL API response');
       }
     } else {
       log.warn({ result }, 'Lu88: game URL API returned non-200');
     }
 
-    if (sportvUrl) {
-      log.info('Lu88: navigating to SportV odds page');
-      await page.goto(sportvUrl, { waitUntil: 'commit', timeout: 60000 });
-      await page.waitForTimeout(5000); // let SportV SPA fully load odds
-      log.info('Lu88: warm-up complete — on SportV odds page');
-    } else if (this._sportvGameUrl) {
-      // Use cached URL from a previous warmUp if API call failed
-      log.info({ url: this._sportvGameUrl }, 'Lu88: using cached SportV URL');
-      await page.goto(this._sportvGameUrl, { waitUntil: 'commit', timeout: 60000 });
-      await page.waitForTimeout(5000);
-      log.info('Lu88: warm-up complete (from cache) — on SportV odds page');
-    } else {
+    const targetUrl = sportvUrl || this._sportvGameUrl;
+    if (!targetUrl) {
       log.warn('Lu88: could not obtain SportV URL — warm-up incomplete');
+      return;
     }
-  }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // getActiveOdds  (stub — extend for actual odds scraping from SportV iframe)
-  // ────────────────────────────────────────────────────────────────────────────
+    if (!sportvUrl) {
+      log.info({ targetUrl }, 'Lu88: using cached SportV URL');
+    }
+
+    log.info('Lu88: navigating to DepositProcessLogin URL');
+    await page.goto(targetUrl, { waitUntil: 'commit', timeout: 90000 });
+    await page.waitForTimeout(5000);
+    log.info({ finalUrl: page.url() }, 'Lu88: warm-up complete after redirect chain');
+  }
 
   /**
    * Fetch active odds from the Lu88 SportV page.
@@ -297,30 +194,122 @@ export default class Lu88Adapter extends BaseAdapter {
   async getActiveOdds(page, sportType = SportType.FOOTBALL) {
     log.info({ sportType }, 'Lu88: getActiveOdds called');
 
-    // Check if we are currently on the SportV domain
-    const currentUrl = page.url();
-    const isOnSportV = currentUrl.includes('bpjp45ee.com')
-      || currentUrl.includes('bps6mxnb.com')
-      || (this._sportvGameUrl && currentUrl.startsWith(new URL(this._sportvGameUrl).origin));
+    const checkFrameLoaded = async () => {
+      try {
+        const frame = page.frameLocator('#sportsFrame');
+        return await frame.locator('body').count() > 0;
+      } catch (e) {
+        return false;
+      }
+    };
 
-    if (!isOnSportV) {
-      log.info('Lu88: not on SportV page, navigating via warmUp');
-      await this.warmUp(page);
+    const frameReady = await checkFrameLoaded();
+    if (!frameReady) {
+      log.warn('Lu88: sportsFrame not ready');
+      return [];
     }
 
-    // TODO: Implement actual odds scraping from SportV page.
-    // The SportV page at https://c0z0ob.bps6mxnb.com/Newindex?... lists live sports odds.
-    // Scraping will likely require:
-    //   1. Waiting for the odds table to render
-    //   2. Selecting football events
-    //   3. Parsing home/away/league and OU or 1X2 markets
-    log.warn('Lu88: getActiveOdds scraping not yet implemented — returning empty array');
-    return [];
-  }
+    try {
+      const frame = page.frameLocator('#sportsFrame');
+      log.info('Lu88: fetching active odds inside iframe...');
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // placeBet / hedgeLeg / voidLeg  (stubs)
-  // ────────────────────────────────────────────────────────────────────────────
+      // wait for matches to attach
+      await frame.locator('.c-match').first().waitFor({ state: 'attached', timeout: 20000 }).catch(() => {});
+      await page.waitForTimeout(5000);
+      const matchesCount = await frame.locator('.c-match').count();
+      log.info({ count: matchesCount }, 'Lu88: found match elements');
+
+      // (Optional debug HTML dump)
+      const html = await frame.locator('body').innerHTML();
+      import('fs').then(fs => fs.default.writeFileSync('./error_screenshots/lu88_getActiveOdds_body.html', html.substring(0, 150000)));
+
+      if (matchesCount === 0) {
+        log.warn('Lu88: No matches found. Returning empty array.');
+        return [];
+      }
+
+      const odds = await frame.locator('body').evaluate((body, parsedSportType) => {
+        const document = body.ownerDocument;
+        const results = [];
+        
+        // Grab .c-match elements (avoid finding identical structures within groups)
+        const matches = document.querySelectorAll('.c-match');
+
+        matches.forEach((m) => {
+          const teamNodes = m.querySelectorAll('.c-match__team');
+          let homeTeam = '', awayTeam = '';
+          if (teamNodes.length >= 2) {
+            homeTeam = teamNodes[0].textContent.trim();
+            awayTeam = teamNodes[1].textContent.trim();
+          }
+          if (!homeTeam || !awayTeam) return;
+
+          let rawEventId = `${homeTeam} vs ${awayTeam}`;
+
+          // find odds buttons
+          const btns = m.querySelectorAll('[data-odds-status]');
+          if (btns.length === 0) return;
+
+          // get clean event id if possible
+          const oddsSpan = btns[0].querySelector('.c-odds');
+          if (oddsSpan && oddsSpan.getAttribute('data-moid')) {
+            rawEventId = oddsSpan.getAttribute('data-moid').split('__')[0];
+          }
+
+          btns.forEach((btn) => {
+            const valSpan = btn.querySelector('.c-odds');
+            const goalSpan = btn.querySelector('.c-text-goal') || btn.querySelector('.l-text-goal');
+            let priceText = '';
+            
+            if (valSpan) priceText = valSpan.textContent.trim();
+            else priceText = btn.textContent.trim();
+
+            const price = parseFloat(priceText);
+            if (Number.isNaN(price) || price === 0) return;
+
+            let spec = '';
+            if (goalSpan) spec = goalSpan.textContent.trim();
+
+            // determine bet type from button id suffix
+            let betType = btn.id || '';
+            let market = 'Unknown';
+            let selection = betType;
+            
+            if (betType.endsWith('h')) { market = 'Handicap'; selection = 'Home'; }
+            else if (betType.endsWith('a')) { market = 'Handicap'; selection = 'Away'; }
+            else if (betType.endsWith('1')) { market = '1X2'; selection = 'Home'; }
+            else if (betType.endsWith('2')) { market = '1X2'; selection = 'Away'; }
+            else if (betType.endsWith('x')) { market = '1X2'; selection = 'Draw'; }
+            else if (betType.includes('u') || spec.toLowerCase().includes('u') || priceText.toLowerCase().includes('u')) {
+              // Note: O/U buttons might not end cleanly in simple suffix, but logic can be refined later if needed.
+              market = 'Over/Under';
+            }
+
+            results.push({
+              bookmaker: 'lu88',
+              eventId: rawEventId,
+              homeTeam,
+              awayTeam,
+              sportType: parsedSportType,
+              marketId: market,
+              spec,
+              selection,
+              price,
+              extractedAt: new Date().toISOString(),
+            });
+          });
+        });
+
+        return results;
+      }, sportType);
+
+      log.info({ numOdds: odds.length }, 'Lu88: successfully extracted odds');
+      return odds;
+    } catch (error) {
+      log.error({ error: error.message }, 'Lu88: frame evaluation failed');
+      return [];
+    }
+  }
 
   async placeBet(page, leg) {
     throw new Error('Lu88Adapter.placeBet() not yet implemented');
@@ -334,117 +323,50 @@ export default class Lu88Adapter extends BaseAdapter {
     throw new Error('Lu88Adapter.voidLeg() not yet implemented');
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Private helpers
-  // ────────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Detect whether the current page shows a logged-in state.
-   * Lu88 shows the username in the header and a "Nạp tiền" (deposit) button.
-   * @param {import('playwright').Page} page
-   * @returns {Promise<boolean>}
-   */
   async _checkIsLoggedIn(page) {
-    for (const selector of SELECTORS.loggedInIndicators) {
-      try {
-        const visible = await page.locator(selector).first().isVisible({ timeout: 1500 });
-        if (visible) {
-          log.debug({ selector }, 'Lu88: logged-in selector matched');
-          return true;
-        }
-      } catch (_) { }
+    if (!this._authToken) {
+      return false;
     }
 
-    // Secondary check: the login trigger button should NOT be visible when logged in
-    const loginBtnVisible = await page.locator('button:has-text("Đăng nhập")').first().isVisible({ timeout: 1000 }).catch(() => false);
-    if (!loginBtnVisible) {
-      // If we can't see the login button and we're past homepage load, likely logged in
-      const url = page.url();
-      if (url.includes('lu88.moe')) {
-        // Check if there's any account-related text in header
-        const headerText = await page.locator('header').innerText().catch(() => '');
-        if (/nạp|rút|tài khoản|balance|mikamika/i.test(headerText)) {
-          return true;
-        }
+    const { userInfo } = this._buildApiUrls();
+    try {
+      const result = await page.evaluate(async ({ url, token }) => {
+        const resp = await fetch(url, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json, text/plain, */*',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        return {
+          status: resp.status,
+          body: await resp.text(),
+        };
+      }, {
+        url: userInfo,
+        token: this._authToken,
+      });
+
+      if (result.status < 200 || result.status >= 300) {
+        return false;
       }
-    }
 
-    return false;
+      const payload = result.body ? JSON.parse(result.body) : null;
+      return Boolean(payload && payload.status === 'OK' && payload.data && typeof payload.data === 'object');
+    } catch (err) {
+      log.debug({ err: err.message }, 'Lu88: user info check failed');
+      return false;
+    }
   }
 
-  /**
-   * Wait for login to produce either a success or error state.
-   * @param {import('playwright').Page} page
-   * @param {number} timeoutMs
-   * @returns {Promise<{status: 'success'|'error'|'timeout', message?: string}>}
-   */
-  async _waitForLoginOutcome(page, timeoutMs = 30000) {
-    const deadline = Date.now() + timeoutMs;
-
-    while (Date.now() < deadline) {
-      // Check for success: logged-in UI elements appear
-      if (await this._checkIsLoggedIn(page)) {
-        return { status: 'success' };
-      }
-
-      // Check toast/success message
-      const successToast = await page.locator('[class*="toast"]:has-text("thành công"), [class*="success"]').first().isVisible({ timeout: 500 }).catch(() => false);
-      if (successToast) {
-        return { status: 'success' };
-      }
-
-      // Check for error messages
-      for (const errorSel of SELECTORS.errorMessages) {
-        try {
-          const el = page.locator(errorSel).first();
-          const visible = await el.isVisible({ timeout: 500 });
-          if (visible) {
-            const errorText = (await el.innerText().catch(() => '')).trim().toLowerCase();
-            if (LOGIN_ERROR_HINTS.some((hint) => errorText.includes(hint))) {
-              return { status: 'error', message: errorText };
-            }
-          }
-        } catch (_) { }
-      }
-
-      await page.waitForTimeout(400);
-    }
-
-    return { status: 'timeout' };
-  }
-
-  /**
-   * Find the first visible selector from a list within a timeout.
-   * @param {import('playwright').Page} page
-   * @param {string[]} selectors
-   * @param {number} timeoutMs
-   * @returns {Promise<string|null>}
-   */
-  async _findVisibleSelector(page, selectors, timeoutMs = 5000) {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      for (const sel of selectors) {
-        try {
-          const visible = await page.locator(sel).first().isVisible({ timeout: 300 });
-          if (visible) return sel;
-        } catch (_) { }
-      }
-      await page.waitForTimeout(250);
-    }
-    return null;
-  }
-
-  /**
-   * Save a debug screenshot on error.
-   * @param {import('playwright').Page} page
-   * @param {string} label
-   */
   async _saveErrorScreenshot(page, label) {
     try {
       await page.screenshot({
         path: `./error_screenshots/lu88_${label}_${Date.now()}.png`,
         fullPage: false,
       });
-    } catch (_) { }
+    } catch (_) {}
   }
 }
