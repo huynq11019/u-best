@@ -150,24 +150,9 @@ export default class Lu88Adapter extends BaseAdapter {
           if (!markets[finalMarketType]) {
             markets[finalMarketType] = { marketType: finalMarketType, selections: [] };
           }
-          markets[finalMarketType].selections.push({ label: selectionLabel, odds: price, line });
+           markets[finalMarketType].selections.push({ label: selectionLabel, odds: price, line, lineRaw: line !== null ? goalText : null });
         });
-      });
 
-      if (targetEventId) {
-        const flatOdds = [];
-        Object.values(markets).forEach((market) => {
-          if (market.selections.length > 0) {
-             flatOdds.push({
-               eventId, sport: sportType, home: homeTeam, away: awayTeam, league,
-               marketType: market.marketType, startTime, selections: market.selections, scope
-             });
-          }
-        });
-        results.push({
-           eventId, sport: sportType, league, home: homeTeam, away: awayTeam, startTime, markets: flatOdds, scope
-        });
-      } else {
         Object.values(markets).forEach((market) => {
           if (market.selections.length > 0) {
             results.push({
@@ -176,8 +161,8 @@ export default class Lu88Adapter extends BaseAdapter {
             });
           }
         });
-      }
-    });
+      }); // close cols.each
+    }); // close matches.each
 
     return targetEventId ? (results[0] || null) : results;
   }

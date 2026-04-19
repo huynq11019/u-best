@@ -12,7 +12,7 @@ export async function apiRoutes(fastify) {
    */
   fastify.get('/odds/:bookmakerKey', async (request, reply) => {
     const { bookmakerKey } = request.params;
-    const { sport } = request.query;
+    const { sport, marketType } = request.query;
 
     if (!hasAdapter(bookmakerKey)) {
       reply.status(404).send({
@@ -33,7 +33,12 @@ export async function apiRoutes(fastify) {
       const sportType = sport || 'football';
       
       // 3. Lấy dữ liệu odds qua adapter tương ứng
-      const odds = await adapter.getActiveOdds(page, sportType);
+      let odds = await adapter.getActiveOdds(page, sportType);
+      
+      // 3.1. Lọc theo marketType nếu client yêu cầu (vd: ?marketType=OU)
+      if (marketType) {
+        odds = odds.filter(odd => odd.marketType === marketType.toUpperCase());
+      }
       
       return {
         status: 'success',
@@ -64,7 +69,7 @@ export async function apiRoutes(fastify) {
    */
   fastify.get('/:bookmakerKey/events', async (request, reply) => {
     const { bookmakerKey } = request.params;
-    const { sport } = request.query;
+    const { sport, marketType } = request.query;
 
     if (!hasAdapter(bookmakerKey)) {
       reply.status(404).send({
@@ -81,7 +86,15 @@ export async function apiRoutes(fastify) {
       page = await acquirePage(bookmakerKey);
       const sportType = sport || 'football';
       
-      const events = await adapter.getEvents(page, sportType);
+      let events = await adapter.getEvents(page, sportType);
+      
+      // Lọc theo marketType ở cấp độ events -> markets
+      if (marketType && events.length > 0) {
+        events = events.map(e => ({
+          ...e,
+          markets: e.markets ? e.markets.filter(m => m.marketType === marketType.toUpperCase()) : []
+        })).filter(e => e.markets.length > 0);
+      }
       
       return {
         status: 'success',
@@ -111,7 +124,7 @@ export async function apiRoutes(fastify) {
    */
   fastify.get('/:bookmakerKey/events/:eventId', async (request, reply) => {
     const { bookmakerKey, eventId } = request.params;
-    const { sport } = request.query;
+    const { sport, marketType } = request.query;
 
     if (!hasAdapter(bookmakerKey)) {
       reply.status(404).send({
@@ -128,7 +141,7 @@ export async function apiRoutes(fastify) {
       page = await acquirePage(bookmakerKey);
       const sportType = sport || 'football';
       
-      const eventDetail = await adapter.getEventOdds(page, eventId, sportType);
+      let eventDetail = await adapter.getEventOdds(page, eventId, sportType);
       
       if (!eventDetail) {
         reply.status(404).send({
@@ -136,6 +149,13 @@ export async function apiRoutes(fastify) {
           message: `Event with id "${eventId}" not found.`
         });
         return;
+      }
+      
+      // Lọc theo marketType trong các markets của eventDetail
+      if (marketType && eventDetail.markets) {
+        eventDetail.markets = eventDetail.markets.filter(
+          m => m.marketType === marketType.toUpperCase()
+        );
       }
       
       return {

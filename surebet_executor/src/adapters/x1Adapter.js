@@ -304,6 +304,74 @@ export default class X1Adapter extends BaseAdapter {
   }
 
   /**
+   * Fetch full odds details for only the specified event by navigating to its detail page.
+   * Requires league and event parts to construct the URL, or use the eventLink obtained from getActiveOdds.
+   * Example URL: https://1xfun888bet.com/vi/live/football/118663-portugal-primeira-liga/714090711-sporting-clube-de-portugal-benfica
+   */
+  async getEventOdds(page, eventId, sportType = SportType.FOOTBALL) {
+    const odds = await this.getActiveOdds(page, sportType);
+    const event = odds.find(e => e.eventId === eventId);
+    if (!event || !event.eventLink) {
+      log.warn({ eventId, sportType }, '1xBet: getEventOdds — event not found or has no link');
+      return null;
+    }
+
+    return this.getEventOddsDetailByUrl(page, event.eventLink);
+  }
+
+  /**
+   * Navigate directly to the event URL to fetch detailed odds.
+   */
+  async getEventOddsDetailByUrl(page, eventUrlPath) {
+    const baseUrl = this.config.baseUrl || 'https://1xfun888bet.com';
+    // ensure baseurl ends without slash, and eventUrlPath starts with slash
+    const fullUrl = eventUrlPath.startsWith('http') ? eventUrlPath : `${baseUrl.replace(/\/$/, '')}${eventUrlPath.startsWith('/') ? '' : '/'}${eventUrlPath}`;
+    
+    log.info({ fullUrl }, '1xBet: getEventOddsDetailByUrl — navigating to event detail page');
+    
+    await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    
+    // Wait for the detailed markets to load
+    await page.waitForSelector('.dashboard-game-block', { state: 'visible', timeout: 15000 }).catch(() => {
+      log.warn('1xBet: getEventOddsDetailByUrl — event details container not found');
+    });
+
+    await page.waitForTimeout(1500);
+    
+    const html = await page.content();
+    const $ = cheerio.load(html);
+    const selections = [];
+    
+    // Parse detailed odds...
+    $('.ui-market').each((idx, node) => {
+      const mNode = $(node);
+      const valueTextEl = mNode.find('.ui-market__value, [class*="market__value"], [class*="coef"], [class*="odd"]');
+      const valueText = (valueTextEl.length ? valueTextEl.text() : mNode.text()).trim().replace(/,/g, '.');
+
+      const rawOdds = parseFloat(valueText);
+      if (!isNaN(rawOdds) && rawOdds > 1) {
+        const label = mNode.find('.ui-market__label, [class*="label"], [class*="title"]').text().trim() || `sel_${idx + 1}`;
+        selections.push({ label, odds: rawOdds });
+      }
+    });
+    
+    // Attempt to extract teams and other metadata from detail page
+    const home = $('.dashboard-game-team-info__name').first().text().trim() || 'Unknown';
+    const away = $('.dashboard-game-team-info__name').eq(1).text().trim() || 'Unknown';
+    const league = $('.dashboard-champ__name').first().text().trim() || '';
+
+    return {
+      sport: 'football',
+      home,
+      away,
+      league,
+      eventLink: eventUrlPath,
+      selections,
+      scope: 'live'
+    };
+  }
+
+  /**
    * Fetch active odds from 1xBet for the given sport.
    * Navigates to the live sport page and scrapes all visible event cards.
    *
@@ -346,8 +414,9 @@ export default class X1Adapter extends BaseAdapter {
     // Scrape live rows using cheerio instead of page.evaluate
     const $ = cheerio.load(html);
     const results = [];
+    const seenEventIds = new Set();
 
-    const gameBlocks = $('div.dashboard-game, div.dashboard-game-block, div.dashboard-champ__game');
+    const gameBlocks = $('.dashboard-game, .dashboard-game-block, .dashboard-champ__game');
     log.info({ count: gameBlocks.length }, '1xBet: gameBlocks');
     gameBlocks.each((index, blockEl) => {
       try {
@@ -374,13 +443,21 @@ export default class X1Adapter extends BaseAdapter {
           .find('.dashboard-champ__label, .dashboard-champ__title, .dashboard-champ__name')
           .first().text().trim();
 
-        const linkEl = block.find('a.dashboard-game-block__link, a[href*="/live/"]');
-        const href = linkEl ? (linkEl.attr('href') || '') : '';
+        // Extract the exact event link, prioritizing dashboard-game-block__link to avoid catching the league link
+        const linkEl = block.find('a.dashboard-game-block__link').first();
+        const href = linkEl.length ? (linkEl.attr('href') || '') : (block.find('a[href*="/live/"]').last().attr('href') || '');
+        // khi vào màn chi tiết url đang hiển thị dạng /vi/vi/... nên cần kiểm tra và loại bỏ phần dư nếu có
+        const cleanedHref = href.replace(/^\/vi\//, '/');
+        
         const eventId = game.attr('data-game-id')
           || block.attr('data-game-id')
           || block.attr('data-event-id')
-          || (href ? href.split('/').filter(Boolean).pop() : '')
+          || (cleanedHref ? cleanedHref.split('/').filter(Boolean).pop() : '')
           || `game-${index + 1}`;
+
+        if (seenEventIds.has(eventId)) {
+          return; // Skip duplicate container for the same event
+        }
 
         const startTime = block.find('.dashboard-game-info__time, [class*="game-info__time"]').first().text().trim();
 
@@ -401,6 +478,7 @@ export default class X1Adapter extends BaseAdapter {
         });
 
         if ((home !== 'Unknown' || away !== 'Unknown') && selections.length > 0) {
+          seenEventIds.add(eventId);
           results.push({
             eventId,
             sport: sportType,
@@ -411,6 +489,7 @@ export default class X1Adapter extends BaseAdapter {
             startTime,
             selections,
             scope: 'live',
+            eventLink: cleanedHref,
           });
         }
       } catch (_) {
