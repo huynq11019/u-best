@@ -210,3 +210,19 @@ class Merger:
                 sum(now - v.last_updated for v in self._store.values()) / max(len(self._store), 1), 1
             ),
         }
+
+    def list_events(self) -> list[MergedEvent]:
+        """Trả danh sách event đã merge, bỏ trùng do fuzzy alias key."""
+        unique_stores: dict[int, MergedStore] = {}
+        for store in self._store.values():
+            unique_stores[id(store)] = store
+
+        stores = sorted(unique_stores.values(), key=lambda item: item.last_updated, reverse=True)
+        return [store.to_event() for store in stores]
+
+    def get_event(self, match_key: str) -> Optional[MergedEvent]:
+        """Lấy một event theo match_key (hỗ trợ cả alias key đã index)."""
+        store = self._store.get(match_key)
+        if store is None:
+            return None
+        return store.to_event()

@@ -42,7 +42,7 @@ export default class Lu88Adapter extends BaseAdapter {
     log.info('Lu88: logging in via API');
 
     const { login: loginUrl, baseUrl } = this._buildApiUrls();
-    await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto(baseUrl, { waitUntil: 'commit', timeout: 30000 });
 
     if (await this._checkIsLoggedIn(page)) {
       log.info('Lu88: existing API token is still valid');
@@ -184,8 +184,8 @@ export default class Lu88Adapter extends BaseAdapter {
   }
 
   /**
-   * Fetch active odds from the Lu88 SportV page.
-   * Currently returns an empty array — extend with actual SportV DOM scraping.
+   * Fetch active odds from the Lu88 SportV page, including all market types (1X2, AH, OU).
+   * Returns odds in standard format with marketType and selections array.
    *
    * @param {import('playwright').Page} page
    * @param {string} [sportType=SportType.FOOTBALL]
@@ -232,71 +232,122 @@ export default class Lu88Adapter extends BaseAdapter {
         const document = body.ownerDocument;
         const results = [];
         
-        // Grab .c-match elements (avoid finding identical structures within groups)
+        // Grab .c-match elements (card-style match containers)
         const matches = document.querySelectorAll('.c-match');
 
-        matches.forEach((m) => {
+        matches.forEach((m, matchIdx) => {
+          // Extract teams
           const teamNodes = m.querySelectorAll('.c-match__team');
           let homeTeam = '', awayTeam = '';
+          
           if (teamNodes.length >= 2) {
-            homeTeam = teamNodes[0].textContent.trim();
-            awayTeam = teamNodes[1].textContent.trim();
+            const homeText = teamNodes[0].querySelector('.c-team-name')?.textContent.trim() || '';
+            const awayText = teamNodes[1].querySelector('.c-team-name')?.textContent.trim() || '';
+            homeTeam = homeText || '';
+            awayTeam = awayText || '';
           }
+          
           if (!homeTeam || !awayTeam) return;
 
-          let rawEventId = `${homeTeam} vs ${awayTeam}`;
-
-          // find odds buttons
-          const btns = m.querySelectorAll('[data-odds-status]');
-          if (btns.length === 0) return;
-
-          // get clean event id if possible
-          const oddsSpan = btns[0].querySelector('.c-odds');
-          if (oddsSpan && oddsSpan.getAttribute('data-moid')) {
-            rawEventId = oddsSpan.getAttribute('data-moid').split('__')[0];
+          // Extract league
+          const leagueParent = m.closest('.c-league') || m.closest('.c-match-group');
+          const leagueEl = leagueParent ? leagueParent.querySelector('.c-league__name, .c-text-league .c-text') : null;
+          let league = leagueEl?.textContent?.trim() || '';
+          
+          if (!league) {
+             const fallbackEl = m.querySelector('.c-text-league .c-text') || m.querySelector('[title]');
+             league = fallbackEl?.textContent?.trim() || '';
           }
 
-          btns.forEach((btn) => {
-            const valSpan = btn.querySelector('.c-odds');
-            const goalSpan = btn.querySelector('.c-text-goal') || btn.querySelector('.l-text-goal');
-            let priceText = '';
+          // Extract time
+          const timeEl = m.querySelector('.c-match-time');
+          const startTime = timeEl?.textContent?.trim() || '';
+
+          // Determine event ID from first moid if available
+          const firstOdds = m.querySelector('.c-odds[data-moid]');
+          let eventId = firstOdds?.getAttribute('data-moid')?.split('__')[0] || `lu88-${matchIdx}`;
+
+          // Extract all odds buttons and group by market type
+          const allButtons = m.querySelectorAll('[data-odds-status]');
+          
+          // Map to categorize buttons by market type
+          const markets = {};
+
+          allButtons.forEach((btn) => {
+            const btnId = btn.id || '';
+            const oddsSpan = btn.querySelector('.c-odds');
+            const goalSpan = btn.querySelector('.c-text-goal');
+            const textNode = btn.querySelector('.c-text');
             
-            if (valSpan) priceText = valSpan.textContent.trim();
-            else priceText = btn.textContent.trim();
+            if (!oddsSpan) return;
 
-            const price = parseFloat(priceText);
-            if (Number.isNaN(price) || price === 0) return;
+            const priceStr = oddsSpan.textContent.trim();
+            const price = parseFloat(priceStr);
+            if (Number.isNaN(price)) return;
 
-            let spec = '';
-            if (goalSpan) spec = goalSpan.textContent.trim();
+            const goalText = (goalSpan?.textContent?.trim() || '').replace(/\s+/g, ' ');
+            const line = parseFloat(goalText) || null;
+            const label = textNode?.textContent?.trim() || '';
 
-            // determine bet type from button id suffix
-            let betType = btn.id || '';
-            let market = 'Unknown';
-            let selection = betType;
-            
-            if (betType.endsWith('h')) { market = 'Handicap'; selection = 'Home'; }
-            else if (betType.endsWith('a')) { market = 'Handicap'; selection = 'Away'; }
-            else if (betType.endsWith('1')) { market = '1X2'; selection = 'Home'; }
-            else if (betType.endsWith('2')) { market = '1X2'; selection = 'Away'; }
-            else if (betType.endsWith('x')) { market = '1X2'; selection = 'Draw'; }
-            else if (betType.includes('u') || spec.toLowerCase().includes('u') || priceText.toLowerCase().includes('u')) {
-              // Note: O/U buttons might not end cleanly in simple suffix, but logic can be refined later if needed.
-              market = 'Over/Under';
+            // Determine market type and selection label from button content
+            let marketType = 'Unknown';
+            let selectionLabel = label;
+
+            // Detect market type from button ID suffix or label
+            if (label === 'o' && goalText) {
+              marketType = 'OU';
+              selectionLabel = 'Over';
+            } else if (label === 'u' && goalText) {
+              marketType = 'OU';
+              selectionLabel = 'Under';
+            } else if (label === 'H' && goalText) {
+              marketType = 'AH';
+              selectionLabel = 'Home';
+            } else if (label === 'A' && goalText) {
+              marketType = 'AH';
+              selectionLabel = 'Away';
+            } else if (btnId.endsWith('1') || label === '1') {
+              marketType = '1X2';
+              selectionLabel = 'Home';
+            } else if (btnId.endsWith('2') || label === '2') {
+              marketType = '1X2';
+              selectionLabel = 'Away';
+            } else if (btnId.endsWith('x') || label === 'x' || label === 'X') {
+              marketType = '1X2';
+              selectionLabel = 'Draw';
             }
 
-            results.push({
-              bookmaker: 'lu88',
-              eventId: rawEventId,
-              homeTeam,
-              awayTeam,
-              sportType: parsedSportType,
-              marketId: market,
-              spec,
-              selection,
-              price,
-              extractedAt: new Date().toISOString(),
+            // Initialize market entry if not exists
+            if (!markets[marketType]) {
+              markets[marketType] = {
+                marketType,
+                selections: [],
+              };
+            }
+
+            // Add selection to market
+            markets[marketType].selections.push({
+              label: selectionLabel,
+              odds: price,
+              line,
             });
+          });
+
+          // Convert markets object to result items
+          Object.values(markets).forEach((market) => {
+            if (market.selections.length > 0) {
+              results.push({
+                eventId,
+                sport: parsedSportType,
+                home: homeTeam,
+                away: awayTeam,
+                league,
+                marketType: market.marketType,
+                startTime,
+                selections: market.selections,
+                scope: startTime.includes("'") || startTime.toLowerCase().includes('live') ? 'live' : 'prematch',
+              });
+            }
           });
         });
 

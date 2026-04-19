@@ -20,6 +20,37 @@ API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "8080"))
 
 
+def _serialize_event(event) -> dict:
+    return {
+        "match_key": event.match_key,
+        "league": event.league,
+        "home_team": event.home_team,
+        "away_team": event.away_team,
+        "status": event.status.value,
+        "score": {"home": event.score.home, "away": event.score.away} if event.score else None,
+        "minute": event.minute,
+        "source_markets": event.source_markets,
+        "source_ids": event.source_ids,
+        "merged_at": event.merged_at,
+        "schema_version": event.schema_version,
+        "two_sources": event.has_both_sources(),
+    }
+
+
+def _serialize_event_summary(event) -> dict:
+    return {
+        "match_key": event.match_key,
+        "league": event.league,
+        "home_team": event.home_team,
+        "away_team": event.away_team,
+        "status": event.status.value,
+        "score": {"home": event.score.home, "away": event.score.away} if event.score else None,
+        "minute": event.minute,
+        "two_sources": event.has_both_sources(),
+        "merged_at": event.merged_at,
+    }
+
+
 def create_api_app(aggregator: "AggregatorApp") -> web.Application:
     app = web.Application()
 
@@ -65,9 +96,28 @@ def create_api_app(aggregator: "AggregatorApp") -> web.Application:
         keys = await aggregator.state_cache.get_all_live_keys()
         return web.json_response({"count": len(keys), "match_keys": keys})
 
+    async def events(request: web.Request) -> web.Response:
+        """Trả về danh sách sự kiện live (không kèm chi tiết odds)."""
+        merged_events = aggregator.merger.list_events()
+        summaries = [_serialize_event_summary(event) for event in merged_events]
+        return web.json_response({"count": len(summaries), "events": summaries})
+
+    async def event_detail(request: web.Request) -> web.Response:
+        """Trả về chi tiết odds theo match_key."""
+        match_key = request.match_info.get("match_key", "")
+        event = aggregator.merger.get_event(match_key)
+        if event is None:
+            return web.json_response(
+                {"error": "event not found", "match_key": match_key},
+                status=404,
+            )
+        return web.json_response({"event": _serialize_event(event)})
+
     app.router.add_get("/health", health)
     app.router.add_get("/stats", stats)
     app.router.add_get("/live", live_matches)
+    app.router.add_get("/events", events)
+    app.router.add_get(r"/events/{match_key:.+}", event_detail)
     app.router.add_post("/admin/reload-token", reload_token)
 
     return app

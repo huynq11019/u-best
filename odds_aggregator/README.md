@@ -88,6 +88,8 @@ Khi ứng dụng chạy (qua `main.py`), một máy chủ API nội bộ sẽ đ
 - **Máu/Sức khỏe**: `GET /health` (Báo tình trạng kết nối SABA / 1xBET, Lỗi Token).
 - **Thống kê**: `GET /stats` (Báo cáo số lượng Event đã gửi/lỗi sang n8n/Redis, số trận live đang theo dõi).
 - **Trận đấu**: `GET /live` (Lấy mảng Match Keys của mọi trận bóng cỏ).
+- **Danh sách sự kiện**: `GET /events` (Chỉ trả metadata cấp trận: match_key, đội, giải, trạng thái, phút, score, two_sources).
+- **Chi tiết odds theo sự kiện**: `GET /events/{match_key}` (Trả full kèo/odds theo từng nguồn cho trận đó).
 - **Cập nhật Token SABA siêu tốc**:
   Nếu token SABA chết, thay vì tắt App, bạn dán post URL này:
   ```bash

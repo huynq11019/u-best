@@ -61,13 +61,25 @@ async function main() {
     console.log(`      DepositProcessLogin URL: ${adapter._sportvGameUrl || '(not captured)'}`);
     console.log(`      Final browser URL: ${page.url()}\n`);
 
-    // ── Step 3: Get active odds (stub) ────────────────────────────────────────
+    // ── Step 3: Get active odds ────────────────────────────────────────────────
     console.log('[3/3] Running adapter.getActiveOdds()...');
     const odds = await adapter.getActiveOdds(page);
-    const ouOdds = odds.filter(o => o.marketId === 'Over/Under');
-    console.log('--- Over/Under Odds ---');
-    console.log(ouOdds.slice(0, 5));
-    console.log(`      ✓ getActiveOdds returned ${odds.length} records\n`);
+    const ouOdds = odds.filter(o => o.marketType === 'OU');
+    console.log('--- Over/Under Odds Sample ---');
+    if (ouOdds.length > 0) {
+      console.log(`Found ${ouOdds.length} OU markets\n`);
+      ouOdds.slice(0, 3).forEach((odd, i) => {
+        console.log(`  [${i + 1}] ${odd.home} vs ${odd.away} (${odd.league})`);
+        odd.selections.forEach(s => {
+          const line = s.line != null ? ` (line: ${s.line})` : '';
+          console.log(`       ${s.label}${line}: ${s.odds}`);
+        });
+      });
+    } else {
+      console.log('  (No OU odds found)');
+    }
+    console.log(`\n      ✓ getActiveOdds returned ${odds.length} total market records`);
+    console.log(`      ✓ OU markets: ${ouOdds.length}\n`);
 
     console.log('=== All steps passed ===');
   } catch (err) {
