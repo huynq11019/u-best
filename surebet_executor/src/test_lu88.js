@@ -64,7 +64,7 @@ async function main() {
     // ── Step 3: Get active odds ────────────────────────────────────────────────
     console.log('[3/3] Running adapter.getActiveOdds()...');
     const odds = await adapter.getActiveOdds(page);
-    const ouOdds = odds.filter(o => o.marketType === 'OU');
+    const ouOdds = odds.filter(o => o.marketType === 'OU' || o.marketType === 'OU_HT');
     console.log('--- Over/Under Odds Sample ---');
     if (ouOdds.length > 0) {
       console.log(`Found ${ouOdds.length} OU markets\n`);

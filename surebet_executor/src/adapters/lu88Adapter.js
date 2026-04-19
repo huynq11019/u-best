@@ -5,6 +5,7 @@
 // 3) page.goto(DepositProcessLogin URL) and follow redirects to final SportV page
 import { BaseAdapter, SportType } from './baseAdapter.js';
 import { childLogger } from '../config/logger.js';
+import * as cheerio from 'cheerio';
 
 const log = childLogger({ component: 'lu88Adapter' });
 
@@ -24,6 +25,163 @@ export default class Lu88Adapter extends BaseAdapter {
     this._sportvGameUrl = null;
   }
 
+  /**
+   * Internal helper to parse HTML from the Lu88 frame using cheerio.
+   * Eliminates the need for evaluating scraping logic in the browser context.
+   */
+  _parseOddsFromHtml(html, sportType, extractOdds = true, targetEventId = null) {
+    const $ = cheerio.load(html);
+    const results = [];
+    const matches = $('.c-match');
+
+    matches.each((_, m) => {
+      const matchEl = $(m);
+
+      const firstOdds = matchEl.find('.c-odds[data-moid]').first();
+      let eventId = firstOdds.attr('data-moid') ? firstOdds.attr('data-moid').split('__')[0] : `lu88-${_}`;
+
+      if (targetEventId && eventId !== targetEventId) return;
+
+      const teamNodes = matchEl.find('.c-match__team');
+      let homeTeam = '', awayTeam = '';
+      if (teamNodes.length >= 2) {
+        homeTeam = $(teamNodes[0]).find('.c-team-name').text().trim();
+        awayTeam = $(teamNodes[1]).find('.c-team-name').text().trim();
+      }
+
+      if (!homeTeam || !awayTeam) return;
+
+      let league = '';
+      const leagueParent = matchEl.closest('.c-league').length ? matchEl.closest('.c-league') : matchEl.closest('.c-match-group');
+      if (leagueParent.length) {
+        league = leagueParent.find('.c-league__name, .c-text-league .c-text').first().text().trim();
+      }
+      if (!league) {
+        league = matchEl.find('.c-text-league .c-text').first().text().trim() || matchEl.find('div[title]').first().attr('title')?.trim() || '';
+      }
+
+      const timeEl = matchEl.find('.c-match-time');
+      const startTime = timeEl.text().trim();
+      const scope = startTime.includes("'") || startTime.toLowerCase().includes('live') ? 'live' : 'prematch';
+
+      if (!extractOdds) {
+        results.push({
+          eventId, sport: sportType, home: homeTeam, away: awayTeam, league, startTime, markets: [], scope
+        });
+        return;
+      }
+
+      const cols = matchEl.find('.c-bettype-col');
+      const markets = {};
+
+      cols.each((_, col) => {
+        const colEl = $(col);
+        const bt = colEl.attr('data-bt');
+        if (!bt) return;
+
+        let marketType = 'Unknown';
+        let marketScope = 'FT';
+
+        if (['1', '7'].includes(bt)) marketType = 'AH';
+        else if (['3', '8'].includes(bt)) marketType = 'OU';
+        else if (['5', '15'].includes(bt)) marketType = '1X2';
+        else return;
+
+        if (['7', '8', '15'].includes(bt)) marketScope = 'HT';
+        const finalMarketType = marketScope === 'HT' ? marketType + '_HT' : marketType;
+
+        const buttons = colEl.find('.c-odds-button');
+        if (!buttons.length) return;
+
+        let sharedLine = null; // Sometimes LU88 sets line on Home/Over, but not Away/Under
+
+        buttons.each((idx, btn) => {
+          const btnEl = $(btn);
+          const oddsSpan = btnEl.find('.c-odds');
+          if (!oddsSpan.length) return;
+
+          const price = parseFloat(oddsSpan.text().trim());
+          if (Number.isNaN(price)) return;
+
+          const goalSpan = btnEl.find('.c-text-goal');
+          let goalText = '';
+          if (goalSpan.length) {
+              goalText = (goalSpan.text().trim() || '').replace(/\s+/g, ' ');
+          } else {
+              // Try to fallback if odds are sometimes weirdly formatted
+              const fullText = (btnEl.text() || "").trim();
+              const priceText = oddsSpan.text().trim();
+              goalText = fullText.replace(priceText, '').replace(/\s+/g, ' ').trim();
+          }
+
+          let line = null;
+          if (goalText) {
+             let parsedLine = NaN;
+             if (goalText.includes('/')) {
+                 const parts = goalText.split('/');
+                 if (parts.length === 2 && !isNaN(parseFloat(parts[0])) && !isNaN(parseFloat(parts[1]))) {
+                     parsedLine = (parseFloat(parts[0]) + parseFloat(parts[1])) / 2;
+                 }
+             } else {
+                 parsedLine = parseFloat(goalText);
+             }
+
+             if (!isNaN(parsedLine)) {
+                 line = parsedLine;
+                 sharedLine = line; // Share between pairs
+             } else {
+                 line = sharedLine;
+             }
+          } else {
+             line = sharedLine;
+          }
+
+          let selectionLabel = 'Unknown';
+          if (marketType === 'AH') {
+              selectionLabel = idx === 0 ? 'Home' : 'Away';
+          } else if (marketType === 'OU') {
+              selectionLabel = idx === 0 ? 'Over' : 'Under';
+          } else if (marketType === '1X2') {
+              if (idx === 0) selectionLabel = 'Home';
+              else if (idx === 1) selectionLabel = 'Away';
+              else if (idx === 2) selectionLabel = 'Draw';
+          }
+
+          if (!markets[finalMarketType]) {
+            markets[finalMarketType] = { marketType: finalMarketType, selections: [] };
+          }
+          markets[finalMarketType].selections.push({ label: selectionLabel, odds: price, line });
+        });
+      });
+
+      if (targetEventId) {
+        const flatOdds = [];
+        Object.values(markets).forEach((market) => {
+          if (market.selections.length > 0) {
+             flatOdds.push({
+               eventId, sport: sportType, home: homeTeam, away: awayTeam, league,
+               marketType: market.marketType, startTime, selections: market.selections, scope
+             });
+          }
+        });
+        results.push({
+           eventId, sport: sportType, league, home: homeTeam, away: awayTeam, startTime, markets: flatOdds, scope
+        });
+      } else {
+        Object.values(markets).forEach((market) => {
+          if (market.selections.length > 0) {
+            results.push({
+              eventId, sport: sportType, home: homeTeam, away: awayTeam, league,
+              marketType: market.marketType, startTime, selections: market.selections, scope
+            });
+          }
+        });
+      }
+    });
+
+    return targetEventId ? (results[0] || null) : results;
+  }
+
   _buildApiUrls() {
     const baseUrl = (this.config.baseUrl || BASE_URL).replace(/\/$/, '');
     return {
@@ -41,8 +199,17 @@ export default class Lu88Adapter extends BaseAdapter {
   async login(page) {
     log.info('Lu88: logging in via API');
 
-    const { login: loginUrl, baseUrl } = this._buildApiUrls();
-    await page.goto(baseUrl, { waitUntil: 'commit', timeout: 30000 });
+    const initialUrls = this._buildApiUrls();
+    await page.goto(initialUrls.baseUrl, { waitUntil: 'commit', timeout: 30000 });
+
+    // The page might have been redirected (e.g. lu88.moe -> lu88.uno)
+    const currentUrl = new URL(page.url());
+    if (currentUrl.origin !== initialUrls.baseUrl) {
+      log.info(`Lu88: base URL redirected from ${initialUrls.baseUrl} to ${currentUrl.origin}`);
+      this.config.baseUrl = currentUrl.origin;
+    }
+
+    const { login: loginUrl } = this._buildApiUrls();
 
     if (await this._checkIsLoggedIn(page)) {
       log.info('Lu88: existing API token is still valid');
@@ -228,137 +395,85 @@ export default class Lu88Adapter extends BaseAdapter {
         return [];
       }
 
-      const odds = await frame.locator('body').evaluate((body, parsedSportType) => {
-        const document = body.ownerDocument;
-        const results = [];
-        
-        // Grab .c-match elements (card-style match containers)
-        const matches = document.querySelectorAll('.c-match');
-
-        matches.forEach((m, matchIdx) => {
-          // Extract teams
-          const teamNodes = m.querySelectorAll('.c-match__team');
-          let homeTeam = '', awayTeam = '';
-          
-          if (teamNodes.length >= 2) {
-            const homeText = teamNodes[0].querySelector('.c-team-name')?.textContent.trim() || '';
-            const awayText = teamNodes[1].querySelector('.c-team-name')?.textContent.trim() || '';
-            homeTeam = homeText || '';
-            awayTeam = awayText || '';
-          }
-          
-          if (!homeTeam || !awayTeam) return;
-
-          // Extract league
-          const leagueParent = m.closest('.c-league') || m.closest('.c-match-group');
-          const leagueEl = leagueParent ? leagueParent.querySelector('.c-league__name, .c-text-league .c-text') : null;
-          let league = leagueEl?.textContent?.trim() || '';
-          
-          if (!league) {
-             const fallbackEl = m.querySelector('.c-text-league .c-text') || m.querySelector('[title]');
-             league = fallbackEl?.textContent?.trim() || '';
-          }
-
-          // Extract time
-          const timeEl = m.querySelector('.c-match-time');
-          const startTime = timeEl?.textContent?.trim() || '';
-
-          // Determine event ID from first moid if available
-          const firstOdds = m.querySelector('.c-odds[data-moid]');
-          let eventId = firstOdds?.getAttribute('data-moid')?.split('__')[0] || `lu88-${matchIdx}`;
-
-          // Extract all odds buttons and group by market type
-          const allButtons = m.querySelectorAll('[data-odds-status]');
-          
-          // Map to categorize buttons by market type
-          const markets = {};
-
-          allButtons.forEach((btn) => {
-            const btnId = btn.id || '';
-            const oddsSpan = btn.querySelector('.c-odds');
-            const goalSpan = btn.querySelector('.c-text-goal');
-            const textNode = btn.querySelector('.c-text');
-            
-            if (!oddsSpan) return;
-
-            const priceStr = oddsSpan.textContent.trim();
-            const price = parseFloat(priceStr);
-            if (Number.isNaN(price)) return;
-
-            const goalText = (goalSpan?.textContent?.trim() || '').replace(/\s+/g, ' ');
-            const line = parseFloat(goalText) || null;
-            const label = textNode?.textContent?.trim() || '';
-
-            // Determine market type and selection label from button content
-            let marketType = 'Unknown';
-            let selectionLabel = label;
-
-            // Detect market type from button ID suffix or label
-            if (label === 'o' && goalText) {
-              marketType = 'OU';
-              selectionLabel = 'Over';
-            } else if (label === 'u' && goalText) {
-              marketType = 'OU';
-              selectionLabel = 'Under';
-            } else if (label === 'H' && goalText) {
-              marketType = 'AH';
-              selectionLabel = 'Home';
-            } else if (label === 'A' && goalText) {
-              marketType = 'AH';
-              selectionLabel = 'Away';
-            } else if (btnId.endsWith('1') || label === '1') {
-              marketType = '1X2';
-              selectionLabel = 'Home';
-            } else if (btnId.endsWith('2') || label === '2') {
-              marketType = '1X2';
-              selectionLabel = 'Away';
-            } else if (btnId.endsWith('x') || label === 'x' || label === 'X') {
-              marketType = '1X2';
-              selectionLabel = 'Draw';
-            }
-
-            // Initialize market entry if not exists
-            if (!markets[marketType]) {
-              markets[marketType] = {
-                marketType,
-                selections: [],
-              };
-            }
-
-            // Add selection to market
-            markets[marketType].selections.push({
-              label: selectionLabel,
-              odds: price,
-              line,
-            });
-          });
-
-          // Convert markets object to result items
-          Object.values(markets).forEach((market) => {
-            if (market.selections.length > 0) {
-              results.push({
-                eventId,
-                sport: parsedSportType,
-                home: homeTeam,
-                away: awayTeam,
-                league,
-                marketType: market.marketType,
-                startTime,
-                selections: market.selections,
-                scope: startTime.includes("'") || startTime.toLowerCase().includes('live') ? 'live' : 'prematch',
-              });
-            }
-          });
-        });
-
-        return results;
-      }, sportType);
+      const odds = this._parseOddsFromHtml(html, sportType, true);
 
       log.info({ numOdds: odds.length }, 'Lu88: successfully extracted odds');
       return odds;
     } catch (error) {
       log.error({ error: error.message }, 'Lu88: frame evaluation failed');
       return [];
+    }
+  }
+
+  /**
+   * Fetch only event metadata (no odds) from Lu88
+   */
+  async getEvents(page, sportType = SportType.FOOTBALL) {
+    log.info({ sportType }, 'Lu88: getEvents called');
+
+    const checkFrameLoaded = async () => {
+      try {
+        const frame = page.frameLocator('#sportsFrame');
+        return await frame.locator('body').count() > 0;
+      } catch (e) {
+        return false;
+      }
+    };
+
+    const frameReady = await checkFrameLoaded();
+    if (!frameReady) {
+      log.warn('Lu88: sportsFrame not ready for events');
+      return [];
+    }
+
+    try {
+      const frame = page.frameLocator('#sportsFrame');
+      await frame.locator('.c-match').first().waitFor({ state: 'attached', timeout: 20000 }).catch(() => {});
+      const matchesCount = await frame.locator('.c-match').count();
+      if (matchesCount === 0) return [];
+
+      const html = await frame.locator('body').innerHTML();
+      const events = this._parseOddsFromHtml(html, sportType, false);
+
+      log.info({ count: events.length }, 'Lu88: successfully extracted events');
+      return events;
+    } catch (error) {
+      log.error({ error: error.message }, 'Lu88: getEvents failed');
+      return [];
+    }
+  }
+
+  /**
+   * Fetch full odds details for only the specified event 
+   */
+  async getEventOdds(page, eventId, sportType = SportType.FOOTBALL) {
+    log.info({ sportType, eventId }, 'Lu88: getEventOdds called');
+
+    const checkFrameLoaded = async () => {
+      try {
+        const frame = page.frameLocator('#sportsFrame');
+        return await frame.locator('body').count() > 0;
+      } catch (e) {
+        return false;
+      }
+    };
+
+    const frameReady = await checkFrameLoaded();
+    if (!frameReady) {
+      return null;
+    }
+
+    try {
+      const frame = page.frameLocator('#sportsFrame');
+      await frame.locator('.c-match').first().waitFor({ state: 'attached', timeout: 20000 }).catch(() => {});
+      
+      const html = await frame.locator('body').innerHTML();
+      const eventDetails = this._parseOddsFromHtml(html, sportType, true, eventId);
+
+      return eventDetails;
+    } catch (error) {
+      log.error({ error: error.message }, 'Lu88: getEventOdds failed');
+      return null;
     }
   }
 

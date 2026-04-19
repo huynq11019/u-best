@@ -1,4 +1,5 @@
 // T008 - Base Bookmaker Adapter interface
+import { groupOddsByEvent } from '../api/eventHelpers.js';
 
 /**
  * Supported sport types for odds fetching.
@@ -102,5 +103,47 @@ export class BaseAdapter {
    */
   async getActiveOdds(page, sportType) {
     throw new Error(`${this.constructor.name}.getActiveOdds() not implemented`);
+  }
+
+  /**
+   * Fetch a list of events without full market data to optimize scraping speed.
+   * Can be overridden by the specific adapter for better performance.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} [sportType]
+   * @returns {Promise<any[]>}
+   */
+  async getEvents(page, sportType) {
+    // Default fallback: load all odds and group them, returning only the metadata.
+    // Adapters should override this to only parse DOM for events directly.
+    const odds = await this.getActiveOdds(page, sportType);
+    const events = groupOddsByEvent(odds);
+    return events.map(e => ({
+      eventId: e.eventId,
+      sport: e.sport,
+      league: e.league,
+      home: e.home,
+      away: e.away,
+      startTime: e.startTime,
+      // fallback adds empty markets or omitted entirely if your schema prefers
+      markets: []
+    }));
+  }
+
+  /**
+   * Fetch the details (odds/markets) for a specific event.
+   * Can be overridden by the specific adapter to only scrape one event.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} eventId
+   * @param {string} [sportType]
+   * @returns {Promise<any|null>}
+   */
+  async getEventOdds(page, eventId, sportType) {
+    // Default fallback: load all odds, group them, and return the specific event.
+    // Adapters should override this to parse only the matching event node.
+    const odds = await this.getActiveOdds(page, sportType);
+    const events = groupOddsByEvent(odds);
+    return events.find(e => e.eventId === eventId) || null;
   }
 }

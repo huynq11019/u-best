@@ -80,9 +80,8 @@ export async function apiRoutes(fastify) {
     try {
       page = await acquirePage(bookmakerKey);
       const sportType = sport || 'football';
-      const odds = await adapter.getActiveOdds(page, sportType);
       
-      const events = groupOddsByEvent(odds);
+      const events = await adapter.getEvents(page, sportType);
       
       return {
         status: 'success',
@@ -128,10 +127,8 @@ export async function apiRoutes(fastify) {
     try {
       page = await acquirePage(bookmakerKey);
       const sportType = sport || 'football';
-      const odds = await adapter.getActiveOdds(page, sportType);
       
-      const events = groupOddsByEvent(odds);
-      const eventDetail = events.find(e => e.eventId === eventId);
+      const eventDetail = await adapter.getEventOdds(page, eventId, sportType);
       
       if (!eventDetail) {
         reply.status(404).send({
