@@ -1,6 +1,4 @@
 // T015 - 1xBet UI Adapter: login, warmUp, placeBet, hedgeLeg, voidLeg, getActiveOdds
-import fs from 'fs';
-import * as cheerio from 'cheerio';
 import { BaseAdapter, SportType } from './baseAdapter.js';
 import { childLogger } from '../config/logger.js';
 
@@ -59,6 +57,74 @@ const SPORT_URL_MAP = {
 };
 
 /**
+ * Nhóm kèo (G) theo tài liệu GetGameZip.
+ * Chỉ map các nhóm cần thiết cho surebet (1X2, Handicap, O/U).
+ */
+const MARKET_GROUP = {
+  G_1X2_FULLTIME: 1,   // Thắng / Hòa / Thua - toàn trận
+  G_HANDICAP: 2,       // Kèo chấp Châu Á
+  G_TOTAL_OU: 17,      // Tài / Xỉu toàn trận
+  G_BTTS: 19,          // Hai đội cùng ghi bàn
+  G_1ST_HALF_OU: 15,   // Tài / Xỉu hiệp 1
+};
+
+/**
+ * Selection Type (T) cần thiết khi đặt cược.
+ * Đây là giá trị T gửi lên server lúc placeBet.
+ */
+const SELECTION_TYPE = {
+  // 1X2
+  HOME: 1, DRAW: 2, AWAY: 3,
+  // Handicap
+  HANDICAP_TEAM1: 7, HANDICAP_TEAM2: 8,
+  // O/U
+  OVER: 9, UNDER: 10,
+};
+
+/**
+ * Headers giả lập trình duyệt để bypass anti-bot của 1xBet.
+ * Phải khớp chính xác với request từ trình duyệt thật (đặc biệt accept-language & content-type).
+ */
+const API_HEADERS = {
+  'accept': 'application/json, text/plain, */*',
+  'accept-language': 'vi-VN',
+  'content-type': 'application/json',
+  'is-srv': 'false',
+  'x-app-n': '__BETTING_APP__',
+  'x-svc-source': '__BETTING_APP__',
+  'x-requested-with': 'XMLHttpRequest',
+  'x-mobile-project-id': '0',
+  'sec-fetch-dest': 'empty',
+  'sec-fetch-mode': 'cors',
+  'sec-fetch-site': 'same-origin',
+  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36',
+};
+
+/**
+ * Danh sách sport IDs bị loại trừ khi lọc bóng đá (antisports).
+ * Lấy từ request thực tế của 1xBet frontend — loại tất cả trừ sportId=1 (Football).
+ */
+const FOOTBALL_ANTISPORTS = '2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,94,95,96,97,98,99,100';
+
+/**
+ * Map sportId → tham số antisports (loại trừ sport còn lại để chỉ lấy sport cần).
+ * Nếu không có entry thì dùng tham số sports= trực tiếp như fallback.
+ */
+const SPORT_FILTER_PARAMS = {
+  1: { gr: '819', antisports: FOOTBALL_ANTISPORTS, virtualSports: 'true' }, // Football
+};
+
+/**
+ * Reverse lookup: sportId (số) → path URL (vd: 1 → 'football').
+ * Dùng để xây dựng chi tiết URL cho từng sport.
+ */
+const SPORT_ID_TO_PATH = Object.fromEntries(
+  Object.values(SPORT_URL_MAP)
+    .filter(v => v.sportId !== null)
+    .map(v => [v.sportId, v.path])
+);
+
+/**
  * 1xBet bookmaker adapter.
  * Uses Playwright to interact with the 1xBet UI for bet placement.
  *
@@ -67,6 +133,40 @@ const SPORT_URL_MAP = {
 export default class X1Adapter extends BaseAdapter {
   constructor(bookmakerKey, bookkieConfig) {
     super(bookmakerKey, bookkieConfig);
+    /**
+     * Cache lưu metadata event sau mỗi lần getActiveOdds.
+     * Key: composite eventId ("leagueId-gameId"), Value: { sportType, sportPath, leagueId, gameId, league, home, away }
+     * TTL: tự xóa sau 5 phút để tránh stale data.
+     */
+    this._eventCache = new Map();
+    this._eventCacheTimer = null;
+  }
+
+  /**
+   * Lưu danh sách event vào cache với TTL 5 phút.
+   * @param {Array} events - Mảng kết quả từ getActiveOdds
+   * @param {string} sportType
+   */
+  _populateEventCache(events, sportType) {
+    const sport = SPORT_URL_MAP[sportType] || SPORT_URL_MAP[SportType.FOOTBALL];
+    for (const ev of events) {
+      this._eventCache.set(ev.eventId, {
+        sportType,
+        sportPath: sport.path || 'football',
+        leagueId: ev.leagueId,
+        gameId: ev.eventId.split('-').map(Number).reduce((a, b) => Math.max(a, b), 0).toString(),
+        league: ev.league,
+        home: ev.home,
+        away: ev.away,
+      });
+    }
+    // Reset TTL: xóa cache sau 5 phút
+    if (this._eventCacheTimer) clearTimeout(this._eventCacheTimer);
+    this._eventCacheTimer = setTimeout(() => {
+      this._eventCache.clear();
+      log.info('1xBet: event cache cleared (TTL expired)');
+    }, 5 * 60 * 1000);
+    log.info({ size: this._eventCache.size }, '1xBet: event cache updated');
   }
 
   /**
@@ -304,76 +404,271 @@ export default class X1Adapter extends BaseAdapter {
   }
 
   /**
-   * Fetch full odds details for only the specified event by navigating to its detail page.
-   * Requires league and event parts to construct the URL, or use the eventLink obtained from getActiveOdds.
-   * Example URL: https://1xfun888bet.com/vi/live/football/118663-portugal-primeira-liga/714090711-sporting-clube-de-portugal-benfica
+   * Gọi API Get1x2_VZip để lấy danh sách các trận live.
+   * Trả về mảng raw Value[] từ API, mỗi item chứa I (gameId), L (league), O1, O2, SC (score).
+   *
+   * @param {import('playwright').Page} page - Playwright page (dùng để lấy cookies/session)
+   * @param {number} sportId - Sport ID (1=Football, v.v.)
+   * @param {string} apiHost - Host của API (vd: '1xlite-044647.top')
+   * @returns {Promise<Array>}
    */
-  async getEventOdds(page, eventId, sportType = SportType.FOOTBALL) {
-    const odds = await this.getActiveOdds(page, sportType);
-    const event = odds.find(e => e.eventId === eventId);
-    if (!event || !event.eventLink) {
-      log.warn({ eventId, sportType }, '1xBet: getEventOdds — event not found or has no link');
-      return null;
+  async _fetchEventListViaApi(page, sportId, apiHost) {
+    // Dùng tham số lọc theo cách 1xBet frontend thực tế gọi (gr + antisports).
+    // Tránh dùng sports= vì server trả 406 với cách filter đó.
+    const filterParams = SPORT_FILTER_PARAMS[sportId];
+    let queryString;
+    if (filterParams) {
+      const p = new URLSearchParams({
+        count: '200',
+        lng: 'vi',
+        gr: filterParams.gr,
+        antisports: filterParams.antisports,
+        mode: '4',
+        country: '43',
+        virtualSports: filterParams.virtualSports ?? 'true',
+        noFilterBlockEvent: 'true',
+      });
+      queryString = p.toString();
+    } else {
+      // Fallback cho các sport chưa có filterParams
+      const p = new URLSearchParams({
+        sports: String(sportId),
+        count: '200',
+        lng: 'vi',
+        mode: '4',
+        country: '43',
+        noFilterBlockEvent: 'true',
+      });
+      queryString = p.toString();
     }
 
-    return this.getEventOddsDetailByUrl(page, event.eventLink);
+    const url = `https://${apiHost}/service-api/LiveFeed/Get1x2_VZip?${queryString}`;
+    log.info({ url }, '1xBet API: fetching event list via Get1x2_VZip');
+
+    const response = await page.request.get(url, {
+      headers: {
+        ...API_HEADERS,
+        'referer': `https://${apiHost}/vi`,
+      },
+      timeout: 15000,
+    });
+
+    if (!response.ok()) {
+      log.warn({ status: response.status(), url }, '1xBet API: Get1x2_VZip returned non-OK status');
+      return [];
+    }
+
+    const json = await response.json();
+    if (!json.Success || !Array.isArray(json.Value)) {
+      log.warn({ errorCode: json.ErrorCode, error: json.Error }, '1xBet API: Get1x2_VZip unsuccessful response');
+      return [];
+    }
+
+    log.info({ count: json.Value.length }, '1xBet API: Get1x2_VZip returned events');
+    return json.Value;
   }
 
   /**
-   * Navigate directly to the event URL to fetch detailed odds.
+   * Gọi API GetGameZip để lấy chi tiết tất cả các kèo của 1 trận đấu.
+   * Trả về object Value từ API, trong đó Value.GE chứa danh sách các nhóm kèo.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} gameId - Game ID (trường I từ Get1x2_VZip)
+   * @param {string} apiHost
+   * @returns {Promise<object|null>}
    */
-  async getEventOddsDetailByUrl(page, eventUrlPath) {
-    const baseUrl = this.config.baseUrl || 'https://1xfun888bet.com';
-    // ensure baseurl ends without slash, and eventUrlPath starts with slash
-    const fullUrl = eventUrlPath.startsWith('http') ? eventUrlPath : `${baseUrl.replace(/\/$/, '')}${eventUrlPath.startsWith('/') ? '' : '/'}${eventUrlPath}`;
-    
-    log.info({ fullUrl }, '1xBet: getEventOddsDetailByUrl — navigating to event detail page');
-    
-    await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    
-    // Wait for the detailed markets to load
-    await page.waitForSelector('.dashboard-game-block', { state: 'visible', timeout: 15000 }).catch(() => {
-      log.warn('1xBet: getEventOddsDetailByUrl — event details container not found');
+  async _fetchEventOddsViaApi(page, gameId, apiHost) {
+    const params = new URLSearchParams({
+      id: String(gameId),
+      lng: 'vi',
+      isSubGames: 'true',
+      GroupEvents: 'true',
+      countevents: '250',
+      grMode: '4',
+      topGroups: '',
+      country: '43',
+      marketType: '1',
+      isNewBuilder: 'true',
+    });
+    const url = `https://${apiHost}/service-api/LiveFeed/GetGameZip?${params.toString()}`;
+    log.info({ url, gameId }, '1xBet API: fetching event odds via GetGameZip');
+
+    const response = await page.request.get(url, {
+      headers: {
+        ...API_HEADERS,
+        'referer': `https://${apiHost}/vi/live`,
+      },
+      timeout: 15000,
     });
 
-    await page.waitForTimeout(1500);
-    
-    const html = await page.content();
-    const $ = cheerio.load(html);
-    const selections = [];
-    
-    // Parse detailed odds...
-    $('.ui-market').each((idx, node) => {
-      const mNode = $(node);
-      const valueTextEl = mNode.find('.ui-market__value, [class*="market__value"], [class*="coef"], [class*="odd"]');
-      const valueText = (valueTextEl.length ? valueTextEl.text() : mNode.text()).trim().replace(/,/g, '.');
+    if (!response.ok()) {
+      log.warn({ status: response.status(), gameId }, '1xBet API: GetGameZip returned non-OK status');
+      return null;
+    }
 
-      const rawOdds = parseFloat(valueText);
-      if (!isNaN(rawOdds) && rawOdds > 1) {
-        const label = mNode.find('.ui-market__label, [class*="label"], [class*="title"]').text().trim() || `sel_${idx + 1}`;
-        selections.push({ label, odds: rawOdds });
+    const json = await response.json();
+    if (!json.Success || !json.Value) {
+      log.warn({ errorCode: json.ErrorCode, error: json.Error, gameId }, '1xBet API: GetGameZip unsuccessful response');
+      return null;
+    }
+
+    return json.Value;
+  }
+
+  /**
+   * Parse danh sách kèo từ Value.GE (kết quả GetGameZip) sang cấu trúc chuẩn.
+   * Lọc theo danh sách groupIds cho trước. Nếu không truyền groupIds thì lấy tất cả.
+   *
+   * @param {Array} ge - Mảng Value.GE từ GetGameZip
+   * @param {number[]} [groupIds] - Chỉ lấy kèo thuộc các nhóm G này
+   * @returns {Array<{ group: number, groupSub: number, selections: Array }>}
+   */
+  _parseGroupEvents(ge, groupIds = null) {
+    if (!Array.isArray(ge)) return [];
+
+    const markets = [];
+    for (const group of ge) {
+      const g = group.G;
+      if (groupIds && !groupIds.includes(g)) continue;
+
+      const gs = group.GS ?? null;
+      const lines = [];
+
+      for (const eventLine of (group.E || [])) {
+        // Mỗi eventLine là 1 mảng các lựa chọn (selections) cho 1 dòng kèo
+        const selections = eventLine.map(sel => ({
+          type: sel.T,          // Selection Type ID — dùng để placeBet
+          odds: sel.C,          // Hệ số ăn (coefficient)
+          oddsDisplay: sel.CV ?? String(sel.C), // Chuỗi hiển thị canvas
+          line: sel.P ?? null,  // Mốc kèo (handicap / over-under line)
+        }));
+        lines.push(selections);
       }
-    });
-    
-    // Attempt to extract teams and other metadata from detail page
-    const home = $('.dashboard-game-team-info__name').first().text().trim() || 'Unknown';
-    const away = $('.dashboard-game-team-info__name').eq(1).text().trim() || 'Unknown';
-    const league = $('.dashboard-champ__name').first().text().trim() || '';
+
+      markets.push({ group: g, groupSub: gs, lines });
+    }
+    return markets;
+  }
+
+  /**
+   * Fetch full odds details for only the specified event via GetGameZip API.
+   * Đồng thời điều hướng page đến màn chi tiết để chuẩn bị cho placeBet.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} compositeEventId - Dạng "leagueId-gameId" hoặc "gameId-leagueId"
+   *   (vd: "2740174-714342170" hoặc "714342170-2740174").
+   *   GameId là số LỚN HƠN (eventId 1xBet luôn có 9 chữ số, leagueId có 7 chữ số).
+   * @param {string} [sportType]
+   * @returns {Promise<object|null>}
+   */
+  async getEventOdds(page, compositeEventId, sportType = SportType.FOOTBALL) {
+    // Parse theo cách order-agnostic: gameId = số lớn nhất trong composite ID
+    const parts = String(compositeEventId).split('-').map(Number).filter(n => !isNaN(n) && n > 0);
+    const gameId = String(Math.max(...parts));
+    const leagueId = parts.length >= 2 ? String(Math.min(...parts)) : null;
+
+    log.info({ compositeEventId, gameId, leagueId }, '1xBet: getEventOdds — parsed composite eventId');
+
+    const apiHost = this._getApiHost();
+
+    // Tra cache để lấy đúng sport path (football/basketball/...)
+    // Cache được populate từ getActiveOdds — tránh hardcode 'football'
+    const cached = this._eventCache.get(compositeEventId);
+    const sportPath = cached?.sportPath
+      || SPORT_ID_TO_PATH[SPORT_URL_MAP[sportType]?.sportId]
+      || SPORT_URL_MAP[sportType]?.path
+      || 'football';
+
+    // Xây dựng URL chi tiết trận đấu với đúng sport path
+    const detailUrl = leagueId
+      ? `https://${apiHost}/vi/live/${sportPath}/${leagueId}/${gameId}`
+      : null;
+
+    // Chạy đồng thời: gọi API GetGameZip + điều hướng page đến màn chi tiết
+    const [rawValue] = await Promise.all([
+      this._fetchEventOddsViaApi(page, gameId, apiHost),
+      detailUrl
+        ? page.goto(detailUrl, { waitUntil: 'domcontentloaded', timeout: 20000 })
+            .then(() => log.info({ detailUrl }, '1xBet: getEventOdds — navigated to detail page'))
+            .catch(err => log.warn({ detailUrl, err: err.message }, '1xBet: getEventOdds — page navigation failed (non-fatal)'))
+        : Promise.resolve(),
+    ]);
+
+    if (!rawValue) {
+      log.warn({ gameId }, '1xBet: getEventOdds — no data returned from GetGameZip');
+      return null;
+    }
+
+    // Lấy tất cả nhóm kèo quan trọng (1X2, Handicap, O/U)
+    const markets = this._parseGroupEvents(rawValue.GE, [
+      MARKET_GROUP.G_1X2_FULLTIME,
+      MARKET_GROUP.G_HANDICAP,
+      MARKET_GROUP.G_TOTAL_OU,
+      MARKET_GROUP.G_1ST_HALF_OU,
+      MARKET_GROUP.G_BTTS,
+    ]);
+
+    const resolvedLeagueId = leagueId ?? String(rawValue.LI ?? '');
+    const resolvedGameId = String(rawValue.I ?? gameId);
 
     return {
-      sport: 'football',
-      home,
-      away,
-      league,
-      eventLink: eventUrlPath,
-      selections,
-      scope: 'live'
+      eventId: resolvedLeagueId ? `${resolvedLeagueId}-${resolvedGameId}` : resolvedGameId,
+      leagueId: resolvedLeagueId,
+      sport: sportType,
+      home: rawValue.O1 ?? 'Unknown',
+      away: rawValue.O2 ?? 'Unknown',
+      league: rawValue.L ?? '',
+      score: rawValue.SC ?? null,
+      detailUrl: resolvedLeagueId
+        ? `https://${apiHost}/vi/live/${sportPath}/${resolvedLeagueId}/${resolvedGameId}`
+        : null,
+      markets,
+      scope: 'live',
     };
   }
 
   /**
-   * Fetch active odds from 1xBet for the given sport.
-   * Navigates to the live sport page and scrapes all visible event cards.
+   * Lấy odds chi tiết theo URL sự kiện.
+   * Hỗ trợ cả 2 dạng URL:
+   *   - /vi/live/football/2740174-afc-league/714342170-vissel-kobe-... (có slug)
+   *   - /vi/live/football/2740174/714342170 (chỉ ID)
+   */
+  async getEventOddsDetailByUrl(page, eventUrlPath) {
+    const segments = eventUrlPath.replace(/\/$/, '').split('/').filter(Boolean);
+    // Segment cuối là eventId (hoặc eventId-slug), kế tiếp là leagueId (hoặc leagueId-slug)
+    const lastSeg = segments[segments.length - 1] || '';
+    const prevSeg = segments[segments.length - 2] || '';
+
+    const gameId = parseInt(lastSeg.split('-')[0], 10);
+    const leagueId = parseInt(prevSeg.split('-')[0], 10);
+
+    if (!gameId || isNaN(gameId)) {
+      log.warn({ eventUrlPath }, '1xBet: getEventOddsDetailByUrl — cannot extract gameId from URL');
+      return null;
+    }
+
+    // Tạo composite ID rồi delegate sang getEventOdds
+    const compositeId = (!isNaN(leagueId) && leagueId) ? `${leagueId}-${gameId}` : String(gameId);
+    return this.getEventOdds(page, compositeId);
+  }
+
+  /**
+   * Trả về API host từ config hoặc dùng mặc định.
+   * Hỗ trợ cấu hình linh hoạt qua bookkieConfig.apiHost.
+   */
+  _getApiHost() {
+    // baseUrl dạng https://1xfun888bet.com/vi → extract hostname
+    const baseUrl = this.config.baseUrl || 'https://1xfun888bet.com/vi';
+    try {
+      return this.config.apiHost || new URL(baseUrl).hostname;
+    } catch {
+      return '1xlite-044647.top';
+    }
+  }
+
+  /**
+   * Fetch active odds from 1xBet for the given sport via Get1x2_VZip API.
+   * Không cần scrape DOM/canvas — gọi thẳng JSON API mà 1xBet frontend sử dụng.
    *
    * @param {import('playwright').Page} page
    * @param {string} [sportType=SportType.FOOTBALL]  - One of SportType values
@@ -381,125 +676,49 @@ export default class X1Adapter extends BaseAdapter {
    */
   async getActiveOdds(page, sportType = SportType.FOOTBALL) {
     const sport = SPORT_URL_MAP[sportType] || SPORT_URL_MAP[SportType.FOOTBALL];
-    const baseUrl = this.config.baseUrl || 'https://1xfun888bet.com/vi';
-    const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
-    const liveUrl = sport.path
-      ? `${normalizedBaseUrl}/live/${sport.path}`
-      : `${normalizedBaseUrl}/live`;
+    const apiHost = this._getApiHost();
 
-    log.info({ sportType, liveUrl }, '1xBet: getActiveOdds — navigating to live sport page');
+    log.info({ sportType, sportId: sport.sportId, apiHost }, '1xBet: getActiveOdds — fetching via Get1x2_VZip API');
 
-    await page.goto(liveUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    const rawEvents = await this._fetchEventListViaApi(page, sport.sportId ?? 1, apiHost);
 
-    // Wait for live game cards to appear and markets to be loaded
-    await page.waitForSelector(
-      '.dashboard-game .ui-market, .dashboard-game .dashboard-markets__market, .dashboard-game-block .ui-market, .dashboard-game-block .dashboard-markets__market',
-      { state: 'visible', timeout: 15000 }
-    ).catch(() => {
-      log.warn('1xBet: getActiveOdds — event container not found, page may be empty or have different structure');
-    });
+    const results = rawEvents.map((ev) => {
+      const gameId = String(ev.I);
+      const leagueId = String(ev.LI || '');
+      // EventId dạng composite "leagueId-gameId" để caller dùng trực tiếp
+      // khi gọi getEventOdds mà không cần truyền leagueId riêng
+      const eventId = leagueId ? `${leagueId}-${gameId}` : gameId;
+      // Tỷ số hiện tại nếu có
+      const score = ev.SC?.FS ? { home: ev.SC.FS.S1 ?? 0, away: ev.SC.FS.S2 ?? 0 } : null;
 
-    // Small settle delay so dynamic content finishes rendering
-    await page.waitForTimeout(1500);
+      // Trích 3 odds 1X2 từ trường E[] (mảng { T, C })
+      const selectionMap = { 1: '1', 2: 'X', 3: '2' };
+      const selections = (ev.E || []).map(s => ({
+        label: selectionMap[s.T] ?? `T${s.T}`,
+        odds: s.C,
+        type: s.T,
+      })).filter(s => s.odds > 1);
 
-    let html = '';
-    try {
-      html = await page.content();
-      fs.writeFileSync('x1_live_dump.html', html);
-      log.info('1xBet: Dumped HTML to x1_live_dump.html for debugging');
-    } catch (e) {
-      log.error('Failed to dump HTML: ' + e.message);
-    }
+      return {
+        eventId,
+        leagueId,
+        sport: sportType,
+        home: ev.O1 ?? 'Unknown',
+        away: ev.O2 ?? 'Unknown',
+        league: ev.L ?? '',
+        marketType: '1X2',
+        score,
+        selections,
+        scope: 'live',
+        // Không có link cụ thể từ API list — dùng eventId để gọi getEventOdds sau
+        eventLink: null,
+      };
+    }).filter(e => e.home !== 'Unknown' || e.away !== 'Unknown');
 
-    // Scrape live rows using cheerio instead of page.evaluate
-    const $ = cheerio.load(html);
-    const results = [];
-    const seenEventIds = new Set();
+    // Lưu vào cache để getEventOdds có thể tra sport path và leagueId
+    this._populateEventCache(results, sportType);
 
-    const gameBlocks = $('.dashboard-game, .dashboard-game-block, .dashboard-champ__game');
-    log.info({ count: gameBlocks.length }, '1xBet: gameBlocks');
-    gameBlocks.each((index, blockEl) => {
-      try {
-        const block = $(blockEl);
-        const game = block.closest('.dashboard-game, .dashboard-champ__game').length
-          ? block.closest('.dashboard-game, .dashboard-champ__game')
-          : block.parent();
-
-        // Extract teams
-        const teamNameNodes = block.find('.dashboard-game-team-info__name, .ui-team-score-name, .dashboard-game-block__team');
-        const teamNames = [];
-        teamNameNodes.each((_, node) => {
-          const text = $(node).text().trim().replace(/\s+/g, ' ');
-          if (text && !teamNames.includes(text)) {
-            teamNames.push(text);
-          }
-        });
-
-        const home = teamNames[0] || 'Unknown';
-        const away = teamNames[1] || 'Unknown';
-
-        // Extract league
-        const league = game.closest('.dashboard-champ')
-          .find('.dashboard-champ__label, .dashboard-champ__title, .dashboard-champ__name')
-          .first().text().trim();
-
-        // Extract the exact event link, prioritizing dashboard-game-block__link to avoid catching the league link
-        const linkEl = block.find('a.dashboard-game-block__link').first();
-        const href = linkEl.length ? (linkEl.attr('href') || '') : (block.find('a[href*="/live/"]').last().attr('href') || '');
-        // khi vào màn chi tiết url đang hiển thị dạng /vi/vi/... nên cần kiểm tra và loại bỏ phần dư nếu có
-        const cleanedHref = href.replace(/^\/vi\//, '/');
-        
-        const eventId = game.attr('data-game-id')
-          || block.attr('data-game-id')
-          || block.attr('data-event-id')
-          || (cleanedHref ? cleanedHref.split('/').filter(Boolean).pop() : '')
-          || `game-${index + 1}`;
-
-        if (seenEventIds.has(eventId)) {
-          return; // Skip duplicate container for the same event
-        }
-
-        const startTime = block.find('.dashboard-game-info__time, [class*="game-info__time"]').first().text().trim();
-
-        const marketNodes = game.length ? game.find('.dashboard-markets__market, .ui-market') : block.find('.ui-market');
-        const selections = [];
-        const defaultLabels = ['1', 'X', '2'];
-
-        marketNodes.each((idx, node) => {
-          const mNode = $(node);
-          const valueTextEl = mNode.find('.ui-market__value, [class*="market__value"], [class*="coef"], [class*="odd"]');
-          const valueText = (valueTextEl.length ? valueTextEl.text() : mNode.text()).trim().replace(/,/g, '.');
-
-          const rawOdds = parseFloat(valueText);
-          if (!isNaN(rawOdds) && rawOdds > 1) {
-            const explicitLabel = mNode.find('.ui-market__label, [class*="label"], [class*="title"]').text().trim();
-            selections.push({ label: explicitLabel || defaultLabels[idx] || `sel_${idx + 1}`, odds: rawOdds });
-          }
-        });
-
-        if ((home !== 'Unknown' || away !== 'Unknown') && selections.length > 0) {
-          seenEventIds.add(eventId);
-          results.push({
-            eventId,
-            sport: sportType,
-            home,
-            away,
-            league: league || '',
-            marketType: '1X2',
-            startTime,
-            selections,
-            scope: 'live',
-            eventLink: cleanedHref,
-          });
-        }
-      } catch (_) {
-        // Skip malformed cards silently
-      }
-    });
-
-    const odds = results;
-
-    log.info({ sportType, count: odds.length }, '1xBet: getActiveOdds complete');
-    return odds;
+    log.info({ sportType, count: results.length }, '1xBet: getActiveOdds complete');
+    return results;
   }
 }

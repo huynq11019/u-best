@@ -120,6 +120,7 @@ export class BaseAdapter {
     const events = groupOddsByEvent(odds);
     return events.map(e => ({
       eventId: e.eventId,
+      leagueId: e.leagueId,
       sport: e.sport,
       league: e.league,
       home: e.home,

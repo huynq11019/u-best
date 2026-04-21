@@ -203,17 +203,31 @@ Referer: https://1xlite-044647.top/en/live/football
 
 Dữ liệu kèo nằm trong mảng `Value.GE` (Group Events). Dưới đây là các ID nhóm quan trọng:
 
-| Nhóm Kèo (Group) | ID (G) | Ý nghĩa |
+| Nhóm Kèo (Group) | ID (G) | Ý nghĩa (Description) |
 | :--- | :--- | :--- |
-| **1x2** | `1` | Thắng - Hòa - Thua |
-| **Handicap** | `2` | Kèo chấp châu Á |
-| **Total (O/U)** | `17` | Kèo Tài/Xỉu toàn trận |
-| **First Half O/U** | `15` | Kèo Tài/Xỉu hiệp 1 |
+| **1x2 Full Time** | `1` | Thắng - Hòa - Thua (Cả trận) |
+| **Handicap** | `2` | Kèo chấp Châu Á (HDP) |
+| **Total (O/U)** | `17` | Kèo Tài/Xỉu (Over/Under) toàn trận |
+| **BTTS** | `19` | Hai đội cùng ghi bàn (Both Teams To Score) |
+| **1st Half O/U** | `15` | Kèo Tài/Xỉu hiệp 1 |
+| **Special/Prop** | `2882`| Kèo phụ đặc biệt (Thẻ phạt/Phạt góc theo mốc `P`) |
 
-**Chi tiết trong mảng `E` (Events):**
-- `T`: Loại lựa chọn (Ví dụ: `9` là Tài, `10` là Xỉu).
-- `P`: Mức kèo (Ví dụ: `2.5`).
-- `C`: Tỷ lệ ăn (Odds).
+**Giải nghĩa hằng số (Constants) trong `GE` và mảng con `E`:**
+
+- `G` (**Group / Market ID**): Định nghĩa **Nhóm Kèo Chính** (Loại hình cược).
+  - Ví dụ `1` là kèo 1X2 toàn trận, `2` là Chấp (Handicap), `17` là Tài Xỉu.
+  - Ví dụ trong data tham khảo: `G: 19` là kèo **Hai đội cùng ghi bàn (Both Teams To Score)**.
+- `GS` (**Group Sub-ID / Period Extension**): Định nghĩa **Mức phụ / Phân khúc hiệp đấu** (Sub-market).
+  - Ví dụ: Thường `GS` được gán để tách biệt luật áp dụng trong cùng 1 loại kèo. Một kèo `G` có thể mở ra nhiều `GS` (áp dụng cho Hiệp 1, Hiệp 2, phase đặc thù, hoặc gộp penalty). Mã `GS: 21` thường được hệ thống quy chuẩn ngầm chỉ định "Phạm vi Toàn thời gian 90 phút".
+- `T` (**Type / Selection ID**): **Mã Lựa chọn cửa cược**. Đây là tham số bắt buộc dùng để chốt bill. Từ UI và JSON, có thể map: 
+  - `T: 1` = Đội nhà thắng (1), `T: 2` = Hòa (X), `T: 3` = Đội khách thắng (2).
+  - Đối với Kèo Cược Chấp (Handicap - G: 2): `T: 7` = Chọn Đội 1, `T: 8` = Chọn Đội 2.
+  - Đối với Tài/Xỉu (O/U - G: 17): `T: 9` mã hoá cửa **Tài (Over)**, và `T: 10` mã hoá cửa **Xỉu (Under)**.
+- `V`: **Không tồn tại trong object tỷ lệ cược (E)**. Trong JSON của 1xBet, chữ `V` thường chỉ xuất hiện ở mảng `MIS` (với ý nghĩa là **V**alue đi kèm cặp với **K**ey cho các thông tin thống kê như: thời tiết, vòng đấu, thành phố) hoặc là object `Value` báo hiệu dữ liệu cốt lõi tổng thể của API. Khả năng cao bạn gõ nhầm từ `G` (Group ID) hoặc `GS` (Group Sub-ID).
+- `C` (**Coefficient**): **Tỷ lệ Odds (bằng số thực)** - Đây là tỷ lệ thanh toán dùng để tính tiền thắng thua lợi nhuận khi gửi dữ liệu lên server. 
+- `CV` (**Coefficient Value**): **Tỷ lệ hiển thị (dạng chuỗi Text)** - Đây chính là đoạn Text định dạng sẵn sẽ được in/parse trực tiếp lên lưới giao diện thẻ `<canvas>` cho người dùng xem trên UI (VD: `"1.45"`, `"1.015"`, `"33"`).
+- `P` (**Parameter - Tuỳ chọn mốc kèo**): **Mốc Điểm/Cột Mốc**. Chỉ xuất hiện ở các kèo có tính hệ số biên như Cấp Chấp hoặc Tài Xỉu. 
+  - Dựa trên UI/JSON: Trong kèo Chấp Châu Á, `P` sử dụng dấu để phân chia chấp/được chấp (VD: `P: 1.5` nghĩa là Đội nhà hưởng lợi +1.5 trái, trong khi `P: -1.5` là Đội khách bị trừ -1.5 trái). Ở kèo tổng (O/U), `P` luôn là mốc bàn thắng kỳ vọng (VD: `P: 2.5` - Tài xỉu 2.5).
 
 ### 4.4. Header Yêu Cầu
 
@@ -225,3 +239,260 @@ Không cần Token phức tạp như SABA, nhưng cần đảm bảo các header
 
 > [!NOTE]
 > 1xBET Lite cập nhật dữ liệu qua cơ chế **Polling**. Để có dữ liệu real-time, bạn nên gọi API danh sách mỗi 10-15 giây và API chi tiết trận đấu quan tâm mỗi 5 giây.
+
+### 4.5. API Cấp Dữ Liệu Lưới Canvas (Chi Tiết Trận Thực Tế)
+
+Đây là phiên bản đầy đủ của endpoint `GetGameZip` mà 1xBet/1xLite gọi tĩnh tiến để lấy dữ liệu Odds trực tiếp vẽ lên thẻ `<canvas>` ở màn Hình chi tiết trận (`market-grid-canvas`).
+
+- **URL**: `https://1xfun888bet.com/service-api/LiveFeed/GetGameZip`
+- **Phương thức**: `GET`
+- **Tham số (Query Params) Cụ Thể Hơn**:
+    - `id`: `{GAME_ID}` (Ví dụ: `714290039`)
+    - `lng`: `vi`
+    - `countevents`: `250` (Tối đa load 250 kèo)
+    - `grMode`: `4` (Chế độ nhóm Group Mode)
+    - `marketType`: `1`
+    - `isNewBuilder`: `true` (Xác định phiên bản App/Web mới)
+
+**Headers Đặc Biệt / Chống Bot Mở Rộng:**
+Bên cạnh các Headers cơ bản, API LiveFeed cho màn hình chi tiết thỉnh thoảng sử dụng một số Header đánh dấu:
+- `x-app-n`: `__BETTING_APP__`
+- `x-svc-source`: `__BETTING_APP__`
+- `x-requested-with`: `XMLHttpRequest`
+- `x-hd`: Chuỗi mã hóa (Signature/Salt) được sinh ra bằng JS để chống Bot cào dữ liệu tự động. Nếu bị block CORS hoặc 403, có thể bạn sẽ phải giả lập signature này.
+
+**Ví dụ cURL Request Đầy Đủ:**
+```bash
+curl 'https://1xlite-044647.top/service-api/LiveFeed/GetGameZip?id=714290039&lng=vi&isSubGames=true&GroupEvents=true&countevents=250&grMode=4&topGroups=&country=43&marketType=1&isNewBuilder=true' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'x-app-n: __BETTING_APP__' \
+  -H 'x-requested-with: XMLHttpRequest' \
+  -H 'x-svc-source: __BETTING_APP__' \
+  -H 'user-agent: Mozilla/5.0 (Macintosh; Mac OS X 10_15_7) Chrome/147.0.0.0 Safari/537.36'
+```
+
+**Ví dụ Response (JSON):**
+Dưới đây là một phần dữ liệu thực tế API trả về cho ứng dụng vẽ lên lưới canvas (chứa tất tần tật tỷ lệ và loại kèo):
+```json
+{
+  "Error": "",
+  "ErrorCode": 0,
+  "Guid": "",
+  "Id": 0,
+  "Success": true,
+  "Value": {
+    "CE": "Indonesia",
+    "CID": 1,
+    "CN": "Indonesia",
+    "CO": 9,
+    "COI": 72,
+    "DI": "",
+    "EC": 355,
+    "EGC": 59,
+    "GE": [
+      {
+        "G": 1,
+        "GS": 1,
+        "E": [
+          [
+            { "C": 1.675, "CV": "1.675", "G": 1, "GS": 1, "T": 1 },
+            { "C": 3.56,  "CV": "3.56",  "G": 1, "GS": 1, "T": 2 },
+            { "C": 5.22,  "CV": "5.22",  "G": 1, "GS": 1, "T": 3 }
+          ]
+        ]
+      },
+      {
+        "G": 19,
+        "GS": 21,
+        "E": [
+          [
+            { "C": 1.54, "CV": "1.54", "G": 19, "GS": 21, "T": 180 },
+            { "C": 9.29, "CV": "9.29", "G": 19, "GS": 21, "P": 2, "T": 11273 }
+          ],
+          [
+            { "C": 2.408, "CV": "2.408", "G": 19, "GS": 21, "T": 181 },
+            { "C": 1.016, "CV": "1.016", "G": 19, "GS": 21, "P": 2, "T": 11274 }
+          ]
+        ]
+      }
+    ]
+  }
+}
+```
+*Giải thích chi tiết Response:*
+- `Value.GE`: Mảng Group Events (Nhóm kèo tỷ lệ).
+- `G` / `GS`: Thay vì text, API trả mã số tương đương loại kèo (VD `1` = 1X2 Toàn trận, `19` = Tài Xỉu/Chấp...).
+- Trong mảng con `Value.GE[].E[][]`:
+  - `T`: Id của lựa chọn đánh (Bet Type). Gửi `T` này khi đặt cược.
+  - `C`: Tỷ lệ ăn (Odds thực tế số thập phân).
+  - `CV`: Chuỗi String hiển thị trực tiếp lên từng pixel của Canvas.
+  - `P`: Mốc kèo (Handicap / Cột mốc Tài Xỉu), VD như `P: 2` là kèo 2 trái.
+
+---
+
+### 4.6. API Đặt Cược Live (UpdateCoupon)
+
+Đây là API **đặt cược thực sự** (place bet) cho kèo live. Server sẽ kiểm tra tính hợp lệ của odds và xử lý phiếu cược.
+
+- **URL**: `https://1xfun888bet.com/service-api/LiveBet-update/Open/UpdateCoupon`
+- **Phương thức**: `POST`
+- **Content-Type**: `application/json`
+
+#### Headers Bắt Buộc
+
+| Header | Giá trị mẫu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `x-hd` | `9IjVygfc2R3F...` | **Token xác thực phiên** (Base64, sinh bởi JS phía client). Bắt buộc — thiếu sẽ bị 403. |
+| `x-svc-source` | `__BETTING_APP__` | Định danh nguồn gọi API |
+| `x-app-n` | `__BETTING_APP__` | Tên app nội bộ |
+| `x-requested-with` | `XMLHttpRequest` | Đánh dấu AJAX request |
+| `is-srv` | `false` | `false` = gọi từ client, không phải server |
+| `x-mobile-project-id` | `0` | ID project mobile (0 = web) |
+| `Referer` | `https://1xfun888bet.com/vi/live/football/{leagueSlug}/{gameId}-{team1}-{team2}` | URL trang chi tiết trận |
+
+#### Request Body
+
+```json
+{
+  "UserId": 1633454933,
+  "Events": [
+    {
+      "GameId": 714350696,
+      "Type": 10,
+      "Coef": 1.09,
+      "Param": 5.5,
+      "PV": null,
+      "PlayerId": 0,
+      "Kind": 1,
+      "InstrumentId": 0,
+      "Seconds": 0,
+      "Price": 0,
+      "Expired": 0,
+      "PlayersDuel": []
+    }
+  ],
+  "Vid": 0,
+  "partner": 1,
+  "Lng": "vi",
+  "CfView": 0,
+  "CalcSystemsMin": false,
+  "Group": 819,
+  "Country": 43,
+  "Currency": 91,
+  "SaleBetId": 0,
+  "IsPowerBet": false,
+  "WithLobby": false
+}
+```
+
+#### Giải nghĩa các trường Request
+
+**Cấp root:**
+
+| Trường | Kiểu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `UserId` | `number` | ID tài khoản người dùng (lấy từ session sau khi đăng nhập) |
+| `Events` | `array` | Danh sách lựa chọn cược (1 phần tử = single bet, nhiều = combo/parlays) |
+| `Vid` | `number` | Variant ID, thường là `0` |
+| `partner` | `number` | `1` = web chính thức |
+| `Lng` | `string` | Ngôn ngữ (`"vi"` = Tiếng Việt) |
+| `CfView` | `number` | Chế độ hiển thị hệ số (0 = decimal mặc định) |
+| `CalcSystemsMin` | `boolean` | Tính tổng tối thiểu cho hệ thống cược. Thường `false` |
+| `Group` | `number` | Mã môn thể thao tổng hợp (bóng đá live = `819`) |
+| `Country` | `number` | Mã quốc gia người dùng (`43` = Việt Nam) |
+| `Currency` | `number` | Mã tiền tệ (`91` = VND) |
+| `SaleBetId` | `number` | ID cược muốn bán lại (0 = không áp dụng) |
+| `IsPowerBet` | `boolean` | `true` = Power Bet (tăng tiền thưởng tiềm năng, rủi ro cao hơn) |
+| `WithLobby` | `boolean` | Trả về kèm dữ liệu lobby khi `true` |
+
+**Cấp `Events[]` (mỗi lựa chọn cược):**
+
+| Trường | Kiểu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `GameId` | `number` | ID trận đấu — lấy từ trường `I` (Get1x2_VZip) hoặc `GameId` (GetGameZip) |
+| `Type` | `number` | **Mã lựa chọn cược** — tương đương `T` trong response GetGameZip. VD: `9` = Tài (Over), `10` = Xỉu (Under) |
+| `Coef` | `number` | **Tỷ lệ odds tại thời điểm đặt** (decimal). Phải khớp với odds server, nếu lệch server sẽ reject |
+| `Param` | `number` | **Mốc kèo** — tương đương `P` trong GetGameZip. VD: `5.5` = Tài/Xỉu 5.5 bàn |
+| `PV` | `null\|number` | Price Value — thường `null` với kèo live thông thường |
+| `PlayerId` | `number` | ID cầu thủ (cho kèo cầu thủ ghi bàn, v.v). `0` = không áp dụng |
+| `Kind` | `number` | Loại lựa chọn trong kèo: `1` = Tài/Over/Đội nhà, `2` = Xỉu/Under/Đội khách |
+| `InstrumentId` | `number` | ID công cụ phái sinh (thường là `0`) |
+| `Seconds` | `number` | Thời gian thi đấu tại thời điểm đặt (giây, `0` nếu không track) |
+| `Price` | `number` | Giá tiền đặt (để `0` ở bước mở coupon; server sẽ fill) |
+| `Expired` | `number` | Thời điểm hết hạn odds (Unix timestamp, `0` = server tự quản lý) |
+| `PlayersDuel` | `array` | Danh sách cầu thủ trong kèo tay đôi (thường empty `[]`) |
+
+> [!IMPORTANT]
+> `Type` trong `Events[]` chính là `T` lấy từ response `GetGameZip`. Đây là trường quan trọng nhất để chỉ định lựa chọn cược. Ví dụ: Muốn cược Xỉu (Under) 5.5, dùng `Type: 10` (T=10 từ GetGameZip).
+
+#### Map nhanh: GetGameZip → UpdateCoupon
+
+| GetGameZip Field | UpdateCoupon Field | Ghi chú |
+| :--- | :--- | :--- |
+| `Value.I` (hoặc `GameId`) | `Events[].GameId` | ID trận đấu |
+| `E[][].T` | `Events[].Type` | Mã lựa chọn cược |
+| `E[][].C` | `Events[].Coef` | Tỷ lệ odds (phải lấy giá trị mới nhất) |
+| `E[][].P` | `Events[].Param` | Mốc kèo (O/U line, handicap) |
+
+#### Ví dụ cURL
+
+```bash
+curl 'https://1xfun888bet.com/service-api/LiveBet-update/Open/UpdateCoupon' \
+  -H 'x-hd: <SESSION_TOKEN>' \
+  -H 'x-svc-source: __BETTING_APP__' \
+  -H 'x-app-n: __BETTING_APP__' \
+  -H 'x-requested-with: XMLHttpRequest' \
+  -H 'is-srv: false' \
+  -H 'x-mobile-project-id: 0' \
+  -H 'content-type: application/json' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'Referer: https://1xfun888bet.com/vi/live/football/{leagueSlug}/{gameId}-{team1}-{team2}' \
+  --data-raw '{
+    "UserId": <USER_ID>,
+    "Events": [
+      {
+        "GameId": 714350696,
+        "Type": 10,
+        "Coef": 1.09,
+        "Param": 5.5,
+        "PV": null,
+        "PlayerId": 0,
+        "Kind": 1,
+        "InstrumentId": 0,
+        "Seconds": 0,
+        "Price": 0,
+        "Expired": 0,
+        "PlayersDuel": []
+      }
+    ],
+    "Vid": 0,
+    "partner": 1,
+    "Lng": "vi",
+    "CfView": 0,
+    "CalcSystemsMin": false,
+    "Group": 819,
+    "Country": 43,
+    "Currency": 91,
+    "SaleBetId": 0,
+    "IsPowerBet": false,
+    "WithLobby": false
+  }'
+```
+
+#### Response
+
+Server trả về trạng thái coupon. Các trường quan trọng cần xử lý:
+
+| Trường | Ý nghĩa |
+| :--- | :--- |
+| `Success` | `true` = coupon hợp lệ, sẵn sàng confirm |
+| `ErrorCode` | `0` = OK. Mã lỗi khác: odds đã đổi, trận kết thúc, giới hạn cược, v.v |
+| `Value.Coef` | Odds mới nhất từ server (có thể khác `Coef` gửi lên nếu odds thay đổi) |
+| `Value.MaxBet` | Mức cược tối đa cho phép |
+| `Value.CouponId` | ID phiếu cược — dùng để confirm hoặc hủy ở bước tiếp theo |
+
+> [!NOTE]
+> `UpdateCoupon` chỉ là bước **"mở phiếu" (open coupon)** — tương đương thêm vào betting slip và server validate. Sau khi nhận `CouponId`, cần gọi thêm API confirm (thường là `ConfirmCoupon` hoặc `PlaceBet`) để hoàn tất đặt cược.
+
+> [!WARNING]
+> `Coef` phải là odds **real-time** lấy từ `GetGameZip` ngay trước khi gọi API này. Nếu odds đã thay đổi, server sẽ trả về lỗi yêu cầu xác nhận lại với odds mới.

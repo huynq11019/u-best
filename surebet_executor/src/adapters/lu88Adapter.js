@@ -52,9 +52,11 @@ export default class Lu88Adapter extends BaseAdapter {
       if (!homeTeam || !awayTeam) return;
 
       let league = '';
+      let leagueId = '';
       const leagueParent = matchEl.closest('.c-league').length ? matchEl.closest('.c-league') : matchEl.closest('.c-match-group');
       if (leagueParent.length) {
         league = leagueParent.find('.c-league__name, .c-text-league .c-text').first().text().trim();
+        leagueId = leagueParent.attr('data-leagueid') || '';
       }
       if (!league) {
         league = matchEl.find('.c-text-league .c-text').first().text().trim() || matchEl.find('div[title]').first().attr('title')?.trim() || '';
@@ -66,7 +68,7 @@ export default class Lu88Adapter extends BaseAdapter {
 
       if (!extractOdds) {
         results.push({
-          eventId, sport: sportType, home: homeTeam, away: awayTeam, league, startTime, markets: [], scope
+          eventId, leagueId, sport: sportType, home: homeTeam, away: awayTeam, league, startTime, markets: [], scope
         });
         return;
       }
@@ -156,7 +158,7 @@ export default class Lu88Adapter extends BaseAdapter {
         Object.values(markets).forEach((market) => {
           if (market.selections.length > 0) {
             results.push({
-              eventId, sport: sportType, home: homeTeam, away: awayTeam, league,
+              eventId, leagueId, sport: sportType, home: homeTeam, away: awayTeam, league,
               marketType: market.marketType, startTime, selections: market.selections, scope
             });
           }

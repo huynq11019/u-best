@@ -15,6 +15,7 @@ export function groupOddsByEvent(odds) {
     if (!eventsMap.has(eventKey)) {
       eventsMap.set(eventKey, {
         eventId: eventKey,
+        leagueId: odd.leagueId,
         sport: odd.sport,
         league: odd.league,
         home: odd.home,
