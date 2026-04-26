@@ -40,6 +40,11 @@ export const CompensationStatus = Object.freeze({
  * @property {number} stake
  * @property {string} label
  * @property {string|null} [team]
+ * @property {number} [gameId]        - x1: Game ID (1xBet trận đấu ID)
+ * @property {number} [selectionType] - x1: Selection Type T number (9=Over, 10=Under, 7=Home, 8=Away)
+ * @property {number} [line]          - Mốc kèo O/U hoặc handicap (e.g. 6.5)
+ * @property {number} [kind]          - 1=Over/Home/Yes, 2=Under/Away/No
+ * @property {string} [leagueId]      - x1: League ID để build Referer URL
  */
 
 /**

@@ -9,12 +9,24 @@ import * as cheerio from 'cheerio';
 
 const log = childLogger({ component: 'lu88Adapter' });
 
-const BASE_URL = 'https://lu88.moe';
+const BASE_URL = 'https://lu88.art';
+
+/**
+ * Map marketType → marketName hiển thị theo UI (tiếng Việt).
+ */
+const MARKET_TYPE_TO_NAME = {
+  '1X2': 'Chung cuộc',
+  '1X2_HT': 'Chung cuộc hiệp 1',
+  'AH': 'Chấp Châu Á',
+  'AH_HT': 'Chấp Châu Á hiệp 1',
+  'OU': 'Tài xỉu',
+  'OU_HT': 'Tài xỉu hiệp 1',
+};
 
 const SPORTV_GAME_URL_PARAMS = {
   partner_provider: 'sportv',
   partner_game_type: 'sport',
-  home: 'https://lu88.moe?ref_domain=false',
+  home: 'https://lu88.art?ref_domain=false',
   device: 'pc',
 };
 
@@ -26,6 +38,80 @@ export default class Lu88Adapter extends BaseAdapter {
   }
 
   /**
+   * Chuyển đổi flat odds sang grouped markets format (giống x1Adapter).
+   * @param {Array} oddsList - Kết quả từ _parseOddsFromHtml
+   * @returns {Array} - Grouped markets với marketType, marketName, hasLines, options/lines
+   */
+  _groupMarketsForEvent(oddsList) {
+    if (!Array.isArray(oddsList) || oddsList.length === 0) return [];
+
+    // Group theo marketType
+    const marketGroups = {};
+    
+    for (const odd of oddsList) {
+      const key = odd.marketType;
+      if (!marketGroups[key]) {
+        marketGroups[key] = {
+          marketType: key,
+          marketName: MARKET_TYPE_TO_NAME[key] || key,
+          selections: [],
+        };
+      }
+      // Thêm tất cả selections từ odds entry này
+      if (odd.selections && Array.isArray(odd.selections)) {
+        marketGroups[key].selections.push(...odd.selections);
+      }
+    }
+
+    // Chuyển đổi sang format chuẩn
+    return Object.values(marketGroups).map((group) => {
+      const hasLines = group.selections.some((s) => s.line !== null && s.line !== undefined);
+
+      if (!hasLines) {
+        // 1X2: options array
+        return {
+          marketType: group.marketType,
+          marketName: group.marketName,
+          hasLines: false,
+          options: group.selections.map((s) => ({
+            selection: s.label,
+            odds: s.odds,
+            line: s.line,
+          })),
+        };
+      }
+
+      // OU/AH: group theo line
+      const lineMap = new Map();
+      for (const sel of group.selections) {
+        const lineKey = Math.abs(sel.line ?? 0);
+        if (!lineMap.has(lineKey)) lineMap.set(lineKey, []);
+        lineMap.get(lineKey).push(sel);
+      }
+
+      const lines = [];
+      for (const [, pairSelections] of lineMap) {
+        if (pairSelections.length < 2) continue;
+        const sorted = pairSelections.sort((a, b) => a.label.localeCompare(b.label));
+        lines.push({
+          line: sorted[0]?.line ?? null,
+          selectionA: sorted[0]?.label ?? '',
+          oddsA: sorted[0]?.odds ?? 0,
+          selectionB: sorted[1]?.label ?? '',
+          oddsB: sorted[1]?.odds ?? 0,
+        });
+      }
+
+      return {
+        marketType: group.marketType,
+        marketName: group.marketName,
+        hasLines: true,
+        lines: lines.sort((a, b) => a.line - b.line),
+      };
+    });
+  }
+
+  /**
    * Internal helper to parse HTML from the Lu88 frame using cheerio.
    * Eliminates the need for evaluating scraping logic in the browser context.
    */
@@ -33,14 +119,18 @@ export default class Lu88Adapter extends BaseAdapter {
     const $ = cheerio.load(html);
     const results = [];
     const matches = $('.c-match');
+    log.info({ matchCount: matches.length, targetEventId }, 'Lu88: parsing matches from HTML');
 
     matches.each((_, m) => {
       const matchEl = $(m);
 
-      const firstOdds = matchEl.find('.c-odds[data-moid]').first();
-      let eventId = firstOdds.attr('data-moid') ? firstOdds.attr('data-moid').split('__')[0] : `lu88-${_}`;
+      let eventId = (matchEl.attr('data-matchid') || `lu88-${_}`).toString().trim();
 
-      if (targetEventId && eventId !== targetEventId) return;
+      if (targetEventId) {
+        const targetId = targetEventId.toString().trim();
+        log.info({ eventId, targetId, match: eventId === targetId }, 'EventId matching check');
+        if (eventId !== targetId) return;
+      }
 
       const teamNodes = matchEl.find('.c-match__team');
       let homeTeam = '', awayTeam = '';
@@ -154,19 +244,20 @@ export default class Lu88Adapter extends BaseAdapter {
           }
            markets[finalMarketType].selections.push({ label: selectionLabel, odds: price, line, lineRaw: line !== null ? goalText : null });
         });
-
-        Object.values(markets).forEach((market) => {
-          if (market.selections.length > 0) {
-            results.push({
-              eventId, leagueId, sport: sportType, home: homeTeam, away: awayTeam, league,
-              marketType: market.marketType, startTime, selections: market.selections, scope
-            });
-          }
-        });
       }); // close cols.each
+
+      // Push sau khi tất cả cols đã được xử lý (tránh duplicate)
+      Object.values(markets).forEach((market) => {
+        if (market.selections.length > 0) {
+          results.push({
+            eventId, leagueId, sport: sportType, home: homeTeam, away: awayTeam, league,
+            marketType: market.marketType, startTime, selections: market.selections, scope
+          });
+        }
+      });
     }); // close matches.each
 
-    return targetEventId ? (results[0] || null) : results;
+    return results;
   }
 
   _buildApiUrls() {
@@ -431,7 +522,8 @@ export default class Lu88Adapter extends BaseAdapter {
   }
 
   /**
-   * Fetch full odds details for only the specified event 
+   * Fetch full odds details for only the specified event.
+   * Returns event with grouped markets format (giống x1Adapter).
    */
   async getEventOdds(page, eventId, sportType = SportType.FOOTBALL) {
     log.info({ sportType, eventId }, 'Lu88: getEventOdds called');
@@ -455,9 +547,30 @@ export default class Lu88Adapter extends BaseAdapter {
       await frame.locator('.c-match').first().waitFor({ state: 'attached', timeout: 20000 }).catch(() => {});
       
       const html = await frame.locator('body').innerHTML();
-      const eventDetails = this._parseOddsFromHtml(html, sportType, true, eventId);
+      const oddsList = this._parseOddsFromHtml(html, sportType, true, eventId);
 
-      return eventDetails;
+      log.info({ oddsListLength: oddsList.length, eventId }, 'Lu88: parsed odds for event');
+
+      if (oddsList.length === 0) {
+        log.warn({ eventId }, 'Lu88: no odds found for event');
+        return null;
+      }
+
+      // Lấy event info từ entry đầu tiên
+      const firstEntry = oddsList[0];
+      const markets = this._groupMarketsForEvent(oddsList);
+
+      return {
+        eventId: firstEntry.eventId,
+        leagueId: firstEntry.leagueId,
+        sport: sportType,
+        home: firstEntry.home,
+        away: firstEntry.away,
+        league: firstEntry.league,
+        startTime: firstEntry.startTime,
+        scope: firstEntry.scope,
+        markets,
+      };
     } catch (error) {
       log.error({ error: error.message }, 'Lu88: getEventOdds failed');
       return null;

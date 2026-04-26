@@ -119,6 +119,253 @@ export async function apiRoutes(fastify) {
   });
 
   /**
+   * POST /api/:bookmakerKey/bets
+   * Đặt cược trực tiếp qua adapter của nhà cái tương ứng.
+   *
+   * Request body (JSON):
+   * {
+   *   "gameId":   714350696,   // ID trận đấu (bắt buộc)
+   *   "type":     10,          // Selection Type T từ GetGameZip (bắt buộc)
+   *   "odds":     1.09,        // Hệ số ăn tại thời điểm đặt (bắt buộc, > 1)
+   *   "stake":    20000,       // Số tiền đặt (bắt buộc, > 0)
+   *   "line":     5.5,         // Mốc kèo — handicap / O/U line (tuỳ chọn, mặc định 0)
+   *   "kind":     2,           // 1=Over/Home/Yes, 2=Under/Away/No (tuỳ chọn, mặc định 1)
+   *   "leagueId": "2740174",   // League ID để build Referer URL (tuỳ chọn)
+   *   "home":     "Team A",    // Tên đội nhà (tuỳ chọn)
+   *   "away":     "Team B",    // Tên đội khách (tuỳ chọn)
+   *   "sportPath":"football"   // Sport path URL (tuỳ chọn, mặc định "football")
+   * }
+   *
+   * Response (200):
+   * {
+   *   "status":        "success",
+   *   "bookmakerKey":  "x1",
+   *   "order_ref":     "80833384253",
+   *   "placed_odds":   1.09,
+   *   "placed_stake":  20000,
+   *   "balance_after": 30000,
+   *   "placed_at":     "2026-04-24T10:01:13.753Z",
+   *   "odds_changed":  false,
+   *   "line_changed":  false
+   * }
+   */
+  fastify.post('/:bookmakerKey/bets', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['bookmakerKey'],
+        properties: {
+          bookmakerKey: { type: 'string' },
+        },
+      },
+      body: {
+        type: 'object',
+        required: ['gameId', 'type', 'odds', 'stake'],
+        properties: {
+          gameId:    { type: 'number' },
+          type:      { type: 'number' },
+          odds:      { type: 'number', exclusiveMinimum: 1 },
+          stake:     { type: 'number', exclusiveMinimum: 0 },
+          line:      { type: 'number', default: 0 },
+          kind:      { type: 'number', enum: [1, 2], default: 1 },
+          selectionType: { type: 'number' },
+          leagueId:  { type: 'string' },
+          home:      { type: 'string' },
+          away:      { type: 'string' },
+          sportPath: { type: 'string', default: 'football' },
+        },
+        additionalProperties: false,
+      },
+    },
+  }, async (request, reply) => {
+    const { bookmakerKey } = request.params;
+
+    if (!hasAdapter(bookmakerKey)) {
+      reply.status(404).send({
+        error: 'Not Found',
+        message: `Bookmaker adapter "${bookmakerKey}" is not registered.`,
+      });
+      return;
+    }
+
+    const adapter = getAdapter(bookmakerKey);
+
+    // Kiểm tra adapter có hỗ trợ placeBet không (guard cho adapter chưa implement)
+    if (typeof adapter.placeBet !== 'function') {
+      reply.status(501).send({
+        error: 'Not Implemented',
+        message: `Adapter "${bookmakerKey}" does not support bet placement.`,
+      });
+      return;
+    }
+
+    // Build BetLeg từ request body — cấu trúc chuẩn dùng chung cho mọi adapter
+    const leg = {
+      gameId:    request.body.gameId,
+      type:      request.body.type,
+      selectionType: request.body.selectionType,
+      odds:      request.body.odds,
+      stake:     request.body.stake,
+      line:      request.body.line ?? 0,
+      kind:      request.body.kind ?? 1,
+      leagueId:  request.body.leagueId,
+      home:      request.body.home,
+      away:      request.body.away,
+      sportPath: request.body.sportPath ?? 'football',
+    };
+
+    let page;
+    try {
+      page = await acquirePage(bookmakerKey);
+
+      const result = await adapter.placeBet(page, leg);
+
+      return {
+        status: 'success',
+        bookmakerKey,
+        order_ref:     result.order_ref,
+        placed_odds:   result.placed_odds,
+        placed_stake:  result.placed_stake,
+        balance_after: result.balance_after ?? null,
+        placed_at:     result.placed_at ?? null,
+        odds_changed:  result.odds_changed ?? false,
+        line_changed:  result.line_changed ?? false,
+      };
+    } catch (err) {
+      fastify.log.error(
+        { bookmakerKey, gameId: leg.gameId, type: leg.type, err: err.message },
+        'Failed to place bet via adapter'
+      );
+
+      // Phân biệt lỗi validation (4xx) với lỗi hệ thống (5xx)
+      const isClientError = /required|must be|not found|invalid/i.test(err.message);
+      reply.status(isClientError ? 400 : 500).send({
+        error: isClientError ? 'Bad Request' : 'Internal Server Error',
+        message: err.message,
+      });
+    } finally {
+      if (page) {
+        await releasePage(bookmakerKey, page).catch((e) =>
+          fastify.log.warn({ err: e.message }, 'Failed to release page back to pool')
+        );
+      }
+    }
+  });
+
+  /**
+   * POST /api/:bookmakerKey/bets/by-selection
+   * Đặt cược bằng selection ID đã cache - chỉ cần eventId, selectionId, và stake.
+   * Thông tin kèo (odds, line, type) tự động lookup từ cache.
+   *
+   * Prerequisites: Gọi GET /api/:bookmakerKey/events/:eventId trước để populate cache.
+   */
+  fastify.post('/:bookmakerKey/bets/by-selection', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['bookmakerKey'],
+        properties: {
+          bookmakerKey: { type: 'string' },
+        },
+      },
+      body: {
+        type: 'object',
+        required: ['eventId', 'selectionId', 'stake'],
+        properties: {
+          eventId:   { type: 'string' },
+          selectionId: { type: 'string' },
+          stake:     { type: 'number', exclusiveMinimum: 0 },
+          expectedOdds: { type: 'number' },
+          oddsDriftThreshold: { type: 'number', default: 0.05 },
+        },
+        additionalProperties: false,
+      },
+    },
+  }, async (request, reply) => {
+    const { bookmakerKey } = request.params;
+    const { eventId, selectionId, stake, expectedOdds, oddsDriftThreshold } = request.body;
+
+    if (!hasAdapter(bookmakerKey)) {
+      reply.status(404).send({
+        error: 'Not Found',
+        message: `Bookmaker adapter "${bookmakerKey}" is not registered.`,
+      });
+      return;
+    }
+
+    const adapter = getAdapter(bookmakerKey);
+
+    // Kiểm tra adapter có hỗ trợ placeBetBySelection không
+    if (typeof adapter.placeBetBySelection !== 'function') {
+      reply.status(501).send({
+        error: 'Not Implemented',
+        message: `Adapter "${bookmakerKey}" does not support placeBetBySelection.`,
+      });
+      return;
+    }
+
+    let page;
+    try {
+      page = await acquirePage(bookmakerKey);
+
+      const result = await adapter.placeBetBySelection(page, {
+        eventId,
+        selectionId,
+        stake,
+        expectedOdds,
+        oddsDriftThreshold: oddsDriftThreshold ?? 0.05,
+      });
+
+      return {
+        status: 'success',
+        bookmakerKey,
+        order_ref:     result.order_ref,
+        placed_odds:   result.placed_odds,
+        placed_stake:  result.placed_stake,
+        balance_after: result.balance_after ?? null,
+        placed_at:     result.placed_at ?? null,
+        odds_changed:  result.odds_changed ?? false,
+        line_changed:  result.line_changed ?? false,
+      };
+    } catch (err) {
+      fastify.log.error(
+        { bookmakerKey, eventId, selectionId, err: err.message },
+        'Failed to place bet by selection via adapter'
+      );
+
+      // Phân biệt lỗi validation (4xx) với lỗi hệ thống (5xx)
+      const isCacheMiss = /no cached odds/i.test(err.message);
+      const isSelectionNotFound = /selection.*not found/i.test(err.message);
+      const isOddsDrift = /drifted too much/i.test(err.message);
+
+      if (isCacheMiss || isSelectionNotFound) {
+        reply.status(400).send({
+          error: 'Bad Request',
+          message: err.message,
+          code: isCacheMiss ? 'CACHE_MISS' : 'SELECTION_NOT_FOUND',
+        });
+      } else if (isOddsDrift) {
+        reply.status(409).send({
+          error: 'Conflict',
+          message: err.message,
+          code: 'ODDS_DRIFTED',
+        });
+      } else {
+        reply.status(500).send({
+          error: 'Internal Server Error',
+          message: err.message,
+        });
+      }
+    } finally {
+      if (page) {
+        await releasePage(bookmakerKey, page).catch((e) =>
+          fastify.log.warn({ err: e.message }, 'Failed to release page back to pool')
+        );
+      }
+    }
+  });
+
+  /**
    * GET /api/:bookmakerKey/events/:eventId?sport=football
    * Lấy chi tiết các kèo của một trận đấu dựa vào eventId từ một nhà cái.
    */

@@ -496,3 +496,259 @@ Server trả về trạng thái coupon. Các trường quan trọng cần xử l
 
 > [!WARNING]
 > `Coef` phải là odds **real-time** lấy từ `GetGameZip` ngay trước khi gọi API này. Nếu odds đã thay đổi, server sẽ trả về lỗi yêu cầu xác nhận lại với odds mới.
+
+---
+
+### 4.7. API Đặt Cược Hoàn Tất (MakeBetWeb)
+
+Đây là API **đặt cược thực sự và hoàn tất trong một bước** — khác với `UpdateCoupon` chỉ validate/mở phiếu, `MakeBetWeb` xử lý toàn bộ luồng đặt cược và trừ tiền ngay lập tức. Thường dùng cho chế độ **One-Click Bet** hoặc **Auto Bet**.
+
+- **URL**: `https://1xfun888bet.com/service-api/LiveBet/Secure/MakeBetWeb`
+- **Phương thức**: `POST`
+- **Content-Type**: `application/json`
+
+#### Headers Bắt Buộc
+
+| Header | Giá trị mẫu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `x-hd` | `z/WHM2kovF9sc...` | **Token xác thực phiên** (Base64, sinh bởi JS phía client). Bắt buộc — thiếu sẽ bị 403 |
+| `x-auth` | `Bearer eyJ...` | JWT access token lấy từ cookie `user_token` sau khi đăng nhập |
+| `x-svc-source` | `__BETTING_APP__` | Định danh nguồn gọi API |
+| `x-app-n` | `__BETTING_APP__` | Tên app nội bộ |
+| `x-requested-with` | `XMLHttpRequest` | Đánh dấu AJAX request |
+| `is-srv` | `false` | `false` = gọi từ client, không phải server |
+| `x-mobile-project-id` | `0` | ID project mobile (`0` = web) |
+| `Referer` | `https://1xfun888bet.com/vi/live/football/{leagueSlug}/{gameId}-{team1}-{team2}` | URL trang chi tiết trận |
+
+> [!IMPORTANT]
+> `MakeBetWeb` yêu cầu thêm header `x-auth: Bearer <JWT>` so với `UpdateCoupon`. JWT này lấy từ cookie `user_token` (hoặc `access_token`) sau khi đăng nhập.
+
+#### Request Body
+
+```json
+{
+  "UserId": 1633454933,
+  "Events": [
+    {
+      "GameId": 715155020,
+      "Type": 180,
+      "Coef": 3.19,
+      "Param": 0,
+      "PV": null,
+      "PlayerId": 0,
+      "Kind": 1,
+      "InstrumentId": 0,
+      "Seconds": 0,
+      "Price": 0,
+      "Expired": 0,
+      "PlayersDuel": []
+    }
+  ],
+  "Vid": 0,
+  "partner": 1,
+  "Group": 819,
+  "live": true,
+  "CheckCf": 2,
+  "Lng": "vi",
+  "notWait": true,
+  "promo": null,
+  "IsPowerBet": false,
+  "Summ": 20000,
+  "isAutoBet": true,
+  "autoBetCf": 0,
+  "TransformEventKind": true,
+  "autoBetCfView": 0,
+  "Source": 55,
+  "OneClickBet": 2
+}
+```
+
+#### Giải nghĩa các trường Request
+
+**Cấp root — các trường mới so với `UpdateCoupon`:**
+
+| Trường | Kiểu | Giá trị mẫu | Ý nghĩa |
+| :--- | :--- | :--- | :--- |
+| `Summ` | `number` | `20000` | **Số tiền đặt cược (VND)** — trường bắt buộc, không có trong UpdateCoupon |
+| `live` | `boolean` | `true` | Xác nhận đây là kèo live (không phải pre-match) |
+| `CheckCf` | `number` | `2` | **Chính sách xử lý khi odds thay đổi**: `0` = hủy nếu odds đổi, `1` = chấp nhận nếu odds tốt hơn, `2` = chấp nhận mọi thay đổi odds |
+| `notWait` | `boolean` | `true` | Không chờ xác nhận từ server — đặt ngay lập tức (fast bet) |
+| `isAutoBet` | `boolean` | `true` | Chế độ auto bet (One-Click Bet hoặc tự động hóa) |
+| `autoBetCf` | `number` | `0` | Ngưỡng odds tối thiểu cho auto bet (`0` = không giới hạn) |
+| `autoBetCfView` | `number` | `0` | Định dạng hiển thị odds cho auto bet |
+| `TransformEventKind` | `boolean` | `true` | Server tự chuyển đổi `Kind` theo logic nội bộ (quan trọng cho kèo live) |
+| `Source` | `number` | `55` | Nguồn đặt cược: `55` = One-Click Bet từ web. Các giá trị khác có thể là mobile, widget, v.v |
+| `OneClickBet` | `number` | `2` | Chế độ One-Click: `2` = kích hoạt đặt cược 1 click không cần confirm |
+
+**Cấp root — các trường kế thừa từ `UpdateCoupon`:**
+
+| Trường | Kiểu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `UserId` | `number` | ID tài khoản người dùng |
+| `Events` | `array` | Danh sách lựa chọn cược (cấu trúc giống UpdateCoupon) |
+| `Vid` | `number` | Variant ID, thường là `0` |
+| `partner` | `number` | `1` = web chính thức |
+| `Group` | `number` | Mã môn thể thao tổng hợp (bóng đá live = `819`) |
+| `Lng` | `string` | Ngôn ngữ (`"vi"` = Tiếng Việt) |
+| `IsPowerBet` | `boolean` | `true` = Power Bet (rủi ro/thưởng cao hơn) |
+
+**Cấp `Events[]`** — cấu trúc giống `UpdateCoupon`, xem mục 4.6. Lưu ý trường đặc biệt trong ví dụ này:
+
+| Trường | Giá trị | Ý nghĩa |
+| :--- | :--- | :--- |
+| `Type` | `180` | Mã lựa chọn cược — `T: 180` thuộc nhóm `G: 19` (BTTS/kèo đặc biệt) từ GetGameZip |
+| `Param` | `0` | Không có mốc kèo (kèo BTTS/1X2 không cần handicap line) |
+| `Kind` | `1` | Lựa chọn 1 trong nhóm kèo (Có/Yes trong BTTS, hoặc Đội nhà trong 1X2) |
+
+#### Ví dụ cURL Đầy Đủ
+
+```bash
+curl 'https://1xfun888bet.com/service-api/LiveBet/Secure/MakeBetWeb' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: vi-VN' \
+  -H 'content-type: application/json' \
+  -H 'is-srv: false' \
+  -H 'origin: https://1xfun888bet.com' \
+  -H 'referer: https://1xfun888bet.com/vi/live/football/{leagueSlug}/{gameId}-{team1}-{team2}' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/147.0.0.0 Safari/537.36' \
+  -H 'x-app-n: __BETTING_APP__' \
+  -H 'x-auth: Bearer <USER_TOKEN_JWT>' \
+  -H 'x-hd: <SESSION_SIGNATURE>' \
+  -H 'x-mobile-project-id: 0' \
+  -H 'x-requested-with: XMLHttpRequest' \
+  -H 'x-svc-source: __BETTING_APP__' \
+  --data-raw '{
+    "UserId": <USER_ID>,
+    "Events": [
+      {
+        "GameId": 715155020,
+        "Type": 180,
+        "Coef": 3.19,
+        "Param": 0,
+        "PV": null,
+        "PlayerId": 0,
+        "Kind": 1,
+        "InstrumentId": 0,
+        "Seconds": 0,
+        "Price": 0,
+        "Expired": 0,
+        "PlayersDuel": []
+      }
+    ],
+    "Vid": 0,
+    "partner": 1,
+    "Group": 819,
+    "live": true,
+    "CheckCf": 2,
+    "Lng": "vi",
+    "notWait": true,
+    "promo": null,
+    "IsPowerBet": false,
+    "Summ": 20000,
+    "isAutoBet": true,
+    "autoBetCf": 0,
+    "TransformEventKind": true,
+    "autoBetCfView": 0,
+    "Source": 55,
+    "OneClickBet": 2
+  }'
+```
+
+#### Response
+
+```json
+{
+  "Value": {
+    "Id": 80833384253,
+    "Balance": 30000,
+    "PayoutType": 0,
+    "Coupon": {
+      "UserId": 1633454933,
+      "Summ": 20000,
+      "Coef": 3.19,
+      "CheckCf": 2,
+      "Source": 55,
+      "NeedUpdateLine": false,
+      "changeCf": false,
+      "notLogin": false,
+      "notWait": true,
+      "OneClickBet": 2,
+      "TransformEventKind": true,
+      "Group": 819,
+      "Events": [
+        {
+          "Coef": 3.19,
+          "Param": 0,
+          "Type": 180,
+          "GameId": 715155020,
+          "Kind": 1,
+          "Block": false,
+          "IsBannedExpress": false,
+          "Finish": false
+        }
+      ]
+    },
+    "Dt": "/Date(1776962473753)/",
+    "lvC": false,
+    "lnC": false,
+    "waitTime": 0,
+    "betGUID": null,
+    "SummPrep": 0,
+    "FailInfo": null,
+    "CanPrint": true
+  },
+  "Id": 0,
+  "Success": true,
+  "Error": "",
+  "ErrorCode": 0
+}
+```
+
+**Giải nghĩa Response — cấp `Value`:**
+
+| Trường | Giá trị mẫu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `Id` | `80833384253` | **ID phiếu cược** — dùng để tra cứu, hủy, hoặc cash-out sau này |
+| `Balance` | `30000` | **Số dư tài khoản sau khi đặt** (VND). Ví dụ: trước 50,000 → đặt 20,000 → còn 30,000 |
+| `PayoutType` | `0` | Loại thanh toán: `0` = thông thường |
+| `Dt` | `/Date(1776962473753)/` | Timestamp đặt cược (Microsoft JSON Date — parse bằng `new Date(1776962473753)` trong JS) |
+| `lvC` | `false` | **Live Coefficient Changed** — `true` = odds đã thay đổi tại thời điểm đặt |
+| `lnC` | `false` | **Line Changed** — `true` = mốc kèo đã thay đổi tại thời điểm đặt |
+| `waitTime` | `0` | Thời gian chờ xử lý (ms). `0` = xử lý ngay lập tức |
+| `CanPrint` | `true` | Cho phép in/xuất phiếu cược |
+| `FailInfo` | `null` | `null` = thành công. Nếu có lỗi sẽ chứa thông tin lỗi chi tiết |
+| `SummPrep` | `0` | Số tiền chuẩn bị (dùng cho hệ thống prepaid/bonus) |
+| `betGUID` | `null` | GUID phiếu cược (dùng cho hệ thống tracking nội bộ) |
+
+**Giải nghĩa Response — cấp `Value.Coupon` (server echo + fill thêm):**
+
+| Trường | Ý nghĩa |
+| :--- | :--- |
+| `Summ` | Số tiền đã đặt — server xác nhận |
+| `Coef` | Odds tại thời điểm đặt được chốt |
+| `NeedUpdateLine` | `false` = không cần cập nhật lại mốc kèo |
+| `changeCf` | `false` = odds không bị thay đổi bởi server |
+| `notLogin` | `false` = người dùng đã đăng nhập hợp lệ |
+| `maxBet / minBet` | `0` = server không trả giới hạn cược (đã pass validation) |
+| `Block` (trong Events) | `false` = lựa chọn cược không bị khóa |
+| `IsBannedExpress` (trong Events) | `false` = lựa chọn không bị cấm trong combo/parlay |
+| `Finish` (trong Events) | `false` = trận đấu chưa kết thúc tại thời điểm đặt |
+
+#### So sánh `UpdateCoupon` vs `MakeBetWeb`
+
+| Điểm | `UpdateCoupon` | `MakeBetWeb` |
+| :--- | :--- | :--- |
+| Mục đích | Validate + mở phiếu | **Đặt cược hoàn tất** |
+| Có trường `Summ` | Không | **Có** |
+| Cần bước tiếp theo | Có (ConfirmCoupon) | **Không** |
+| Response trả về | `CouponId` để confirm | **Bet ID + Balance mới** |
+| Dùng khi | Betting slip thông thường | **One-Click Bet / Auto Bet** |
+| Header `x-auth` | Không bắt buộc | **Bắt buộc** |
+
+#### Lưu ý quan trọng khi tích hợp
+
+- **`CheckCf: 2`** — nên dùng cho auto bet để tránh bị reject khi odds nhảy nhẹ trong live.
+- **`lvC` và `lnC`** trong response cần được log lại — nếu `true` nghĩa là odds/line đã trượt, cần đánh giá lại lợi nhuận thực tế.
+- **`Source: 55`** nên giữ nguyên để tránh bị phát hiện là bot (server có thể filter theo source).
+- **`Dt`** dùng format `/Date(ms)/` — parse bằng `new Date(parseInt(dt.replace('/Date(', '').replace(')/', '')))` trong JS.
+- **`x-auth`** là JWT lấy từ cookie `user_token` — token này có TTL ngắn (~15 phút), cần refresh định kỳ.

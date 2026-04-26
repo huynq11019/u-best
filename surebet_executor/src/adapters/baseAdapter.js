@@ -2,6 +2,116 @@
 import { groupOddsByEvent } from '../api/eventHelpers.js';
 
 /**
+ * Simple TTL cache for event odds data with enriched selection IDs.
+ * Used by adapters to cache scraped odds and reference them by ID during placeBet.
+ */
+export class OddsCache {
+  constructor(ttlMs = 120000) {
+    this.cache = new Map();
+    this.ttl = ttlMs;
+  }
+
+  /**
+   * Store event data with auto-generated selection IDs.
+   * @param {string} eventId
+   * @param {object} eventData
+   * @returns {object} enriched data with IDs
+   */
+  set(eventId, eventData) {
+    const enriched = this._enrichWithIds(eventData);
+    this.cache.set(eventId, { data: enriched, timestamp: Date.now() });
+    return enriched;
+  }
+
+  /**
+   * Get cached event data if not expired.
+   * @param {string} eventId
+   * @returns {object|null}
+   */
+  get(eventId) {
+    const entry = this.cache.get(eventId);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > this.ttl) {
+      this.cache.delete(eventId);
+      return null;
+    }
+    return entry.data;
+  }
+
+  /**
+   * Clear cache for specific event or all events.
+   * @param {string} [eventId]
+   */
+  clear(eventId) {
+    if (eventId) {
+      this.cache.delete(eventId);
+    } else {
+      this.cache.clear();
+    }
+  }
+
+  /**
+   * Find a selection by its ID within cached event data.
+   * @param {object} eventData
+   * @param {string} selectionId
+   * @returns {object|null} selection with market context
+   */
+  findSelection(eventData, selectionId) {
+    if (!eventData.markets) return null;
+
+    for (const market of eventData.markets) {
+      // Check options (for 1X2)
+      if (market.options) {
+        const option = market.options.find(o => o.id === selectionId);
+        if (option) {
+          return { ...option, marketType: market.marketType, marketName: market.marketName, hasLines: false };
+        }
+      }
+      // Check lines (for OU/AH)
+      if (market.lines) {
+        const line = market.lines.find(l => l.id === selectionId);
+        if (line) {
+          return { ...line, marketType: market.marketType, marketName: market.marketName, hasLines: true };
+        }
+      }
+    }
+    return null;
+  }
+
+  _enrichWithIds(eventData) {
+    if (!eventData.markets) return eventData;
+
+    const markets = eventData.markets.map((market, mIdx) => {
+      const baseId = `${eventData.eventId}_${market.marketType}`;
+
+      if (market.options) {
+        return {
+          ...market,
+          options: market.options.map((opt, i) => ({
+            ...opt,
+            id: `${baseId}_opt_${i}`,
+          })),
+        };
+      }
+
+      if (market.lines) {
+        return {
+          ...market,
+          lines: market.lines.map((line, i) => ({
+            ...line,
+            id: `${baseId}_line_${i}`,
+          })),
+        };
+      }
+
+      return market;
+    });
+
+    return { ...eventData, markets };
+  }
+}
+
+/**
  * Supported sport types for odds fetching.
  * Adapters should use these keys in getActiveOdds().
  */
@@ -41,6 +151,7 @@ export class BaseAdapter {
     this.config = bookkieConfig;
     this._page = null;
     this._isLoggedIn = false;
+    this._oddsCache = new OddsCache();
   }
 
   /**

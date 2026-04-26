@@ -35,6 +35,12 @@ export const surebetOpportunitySchema = {
               stake: { type: 'number', minimum: 0 },
               label: { type: 'string' },
               team: { type: 'string', nullable: true },
+              // x1-specific fields (optional) — passed through to adapter.placeBet()
+              gameId: { type: 'number' },
+              selectionType: { type: 'number' },
+              line: { type: 'number' },
+              kind: { type: 'number', enum: [1, 2] },
+              leagueId: { type: 'string' },
             },
           },
         },
