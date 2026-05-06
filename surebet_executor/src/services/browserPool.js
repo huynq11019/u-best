@@ -182,7 +182,7 @@ function createBookmakerPool(bookmakerKey, adapter) {
     max: config.browserPool.max,
     testOnBorrow: true,
     autostart: false,
-    acquireTimeoutMillis: 15000,
+    acquireTimeoutMillis: 90000,
     idleTimeoutMillis: 600000,
     evictionRunIntervalMillis: 30000,
   });

@@ -45,6 +45,13 @@ export const CompensationStatus = Object.freeze({
  * @property {number} [line]          - Mốc kèo O/U hoặc handicap (e.g. 6.5)
  * @property {number} [kind]          - 1=Over/Home/Yes, 2=Under/Away/No
  * @property {string} [leagueId]      - x1: League ID để build Referer URL
+ * @property {string} [selectionId]   - lu88: composite ID dạng "lu88_{oddsId}_{betteam}", dùng để lookup metadata từ _lu88SelectionCache
+ * @property {string} [oddsId]        - lu88: ID tỷ lệ cược, lấy từ id attribute của .c-odds-button (e.g. "987563457")
+ * @property {number} [bettype]       - lu88: data-bt number (1=AH, 3=OU, 5=1X2, 7=AH_HT, 8=OU_HT, 15=1X2_HT)
+ * @property {string} [betteam]       - lu88: "h"|"a" cho AH/1X2, "o"|"u" cho OU (từ id suffix của .c-odds-button)
+ * @property {boolean} [isInPlay]     - lu88: true nếu kèo đang live (scope === 'live')
+ * @property {number} [homeScore]     - lu88: tỷ số đội nhà tại thời điểm đặt
+ * @property {number} [awayScore]     - lu88: tỷ số đội khách tại thời điểm đặt
  */
 
 /**
