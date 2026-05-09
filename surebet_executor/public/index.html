@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>U-Best | Surebet Dashboard</title>
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body>
+  <div class="app-shell">
+
+    <!-- ── Top Bar ──────────────────────────────────────────────── -->
+    <header class="top-bar">
+      <div class="logo">U-BEST<span> // dashboard</span></div>
+
+      <nav class="nav-tabs">
+        <button data-tab="events" class="active">Events</button>
+        <button data-tab="odds">Odds</button>
+        <button data-tab="surebets">Surebets</button>
+      </nav>
+
+      <div id="book-selector"></div>
+    </header>
+
+    <!-- ── Main Content ─────────────────────────────────────────── -->
+    <main class="main-content">
+
+      <!-- ═══ Events Panel ═══ -->
+      <section id="panel-events" class="panel active">
+        <div class="panel-toolbar">
+          <span class="label">Events</span>
+          <span id="events-book-label" class="count"></span>
+          <span class="sep">|</span>
+          <span id="events-count" class="count">—</span>
+          <select id="events-market-filter">
+            <option value="">All Markets</option>
+            <option value="OU">O/U</option>
+            <option value="AH">Asian Handicap</option>
+            <option value="1X2">1X2</option>
+            <option value="HDP">HDP</option>
+          </select>
+          <button id="events-refresh-btn" class="btn">Refresh</button>
+          <label class="auto-refresh-toggle">
+            <input type="checkbox" id="events-auto-refresh" checked /> Auto
+          </label>
+        </div>
+        <div id="events-list"></div>
+      </section>
+
+      <!-- ═══ Odds Panel ═══ -->
+      <section id="panel-odds" class="panel">
+        <div class="panel-toolbar">
+          <span class="label">Odds</span>
+          <span id="odds-book-label" class="count"></span>
+          <span class="sep">|</span>
+          <span id="odds-count" class="count">—</span>
+          <select id="odds-market-filter">
+            <option value="">All Markets</option>
+            <option value="OU">O/U</option>
+            <option value="AH">Asian Handicap</option>
+            <option value="1X2">1X2</option>
+            <option value="HDP">HDP</option>
+          </select>
+          <button id="odds-refresh-btn" class="btn">Refresh</button>
+          <label class="auto-refresh-toggle">
+            <input type="checkbox" id="odds-auto-refresh" checked /> Auto
+          </label>
+        </div>
+        <div id="odds-list"></div>
+      </section>
+
+      <!-- ═══ Surebets Panel ═══ -->
+      <section id="panel-surebets" class="panel">
+        <div class="panel-toolbar">
+          <span class="label">Surebets</span>
+          <div id="surebet-summary"></div>
+          <span class="sep">|</span>
+          <label class="auto-refresh-toggle" style="gap:6px;">
+            Min Profit %
+            <input type="number" id="surebet-profit-min" value="0.5" min="0" max="100" step="0.1" style="width:70px;" />
+          </label>
+          <select id="surebet-market-filter">
+            <option value="">All Markets</option>
+            <option value="OU">O/U</option>
+            <option value="AH">Asian Handicap</option>
+            <option value="1X2">1X2</option>
+          </select>
+          <select id="surebet-scope-filter">
+            <option value="">All Scopes</option>
+            <option value="live">Live</option>
+            <option value="prematch">Pre-match</option>
+            <option value="FT">FT</option>
+          </select>
+          <button id="surebet-scan-btn" class="btn btn-accent">Scan Now</button>
+          <button id="surebet-refresh-btn" class="btn">Latest</button>
+          <label class="auto-refresh-toggle">
+            <input type="checkbox" id="surebet-auto-refresh" checked /> Auto
+          </label>
+        </div>
+        <div id="surebet-list"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ── Bet Slip (side drawer) ─────────────────────────────────── -->
+  <aside id="bet-slip">
+    <div class="slip-header">
+      <span class="slip-title">BET SLIP</span>
+      <button id="bet-slip-close" class="slip-close">&times;</button>
+    </div>
+    <div id="bet-slip-body">
+      <p class="slip-empty">Click a selection to open bet slip</p>
+    </div>
+  </aside>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
