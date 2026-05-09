@@ -806,6 +806,92 @@ export default class Lu88Adapter extends BaseAdapter {
   }
 
   /**
+   * Fetch events with full odds (grouped markets) from Lu88.
+   * This is a helper for surebet detection that returns nested events with markets.
+   * @param {import('playwright').Page} page
+   * @param {string} [sportType=SportType.FOOTBALL]
+   * @returns {Promise<Array>} - Array of events with grouped markets
+   */
+  async getEventsWithOdds(page, sportType = SportType.FOOTBALL) {
+    log.info({ sportType }, 'Lu88: getEventsWithOdds called');
+
+    const checkFrameLoaded = async () => {
+      try {
+        const frame = page.frameLocator('#sportsFrame');
+        return await frame.locator('body').count() > 0;
+      } catch (e) {
+        return false;
+      }
+    };
+
+    const frameReady = await checkFrameLoaded();
+    if (!frameReady) {
+      log.warn('Lu88: sportsFrame not ready for events with odds');
+      return [];
+    }
+
+    try {
+      const frame = page.frameLocator('#sportsFrame');
+      await frame.locator('.c-match').first().waitFor({ state: 'attached', timeout: 20000 }).catch(() => {});
+      const matchesCount = await frame.locator('.c-match').count();
+      if (matchesCount === 0) return [];
+
+      const html = await frame.locator('body').innerHTML();
+      const flatOdds = this._parseOddsFromHtml(html, sportType, true);
+
+      // Group flat odds by event
+      const eventMap = new Map();
+      for (const odd of flatOdds) {
+        const key = odd.eventId;
+        if (!eventMap.has(key)) {
+          eventMap.set(key, {
+            eventId: odd.eventId,
+            leagueId: odd.leagueId,
+            sport: odd.sport,
+            home: odd.home,
+            away: odd.away,
+            league: odd.league,
+            startTime: odd.startTime,
+            scope: odd.scope,
+            homeScore: odd.homeScore ?? null,
+            awayScore: odd.awayScore ?? null,
+            flatOdds: []
+          });
+        }
+        eventMap.get(key).flatOdds.push(odd);
+      }
+
+      // Convert to grouped markets format
+      const events = Array.from(eventMap.values()).map(event => {
+        const markets = this._groupMarketsForEvent(event.flatOdds);
+        
+        // Populate selection cache for this event
+        this._populateSelectionCache(event.flatOdds, event);
+
+        return {
+          eventId: event.eventId,
+          leagueId: event.leagueId,
+          sport: event.sport,
+          home: event.home,
+          away: event.away,
+          league: event.league,
+          startTime: event.startTime,
+          scope: event.scope,
+          homeScore: event.homeScore,
+          awayScore: event.awayScore,
+          markets
+        };
+      });
+
+      log.info({ count: events.length }, 'Lu88: successfully extracted events with odds');
+      return events;
+    } catch (error) {
+      log.error({ error: error.message }, 'Lu88: getEventsWithOdds failed');
+      return [];
+    }
+  }
+
+  /**
    * Fetch full odds details for only the specified event.
    * Returns event with grouped markets format (giống x1Adapter).
    */

@@ -8,6 +8,8 @@ import { initPool, drainAllPools, getPoolStats } from './services/browserPool.js
 import { webhookRoutes } from './webhooks/routes.js';
 import { executionRoutes } from './webhooks/executionRoutes.js';
 import { apiRoutes } from './api/routes.js';
+import { surebetRoutes } from './api/surebetRoutes.js';
+import { startWorker, stopWorker } from './services/surebet/surebetWorker.js';
 
 const app = Fastify({
   loggerInstance: logger,
@@ -18,6 +20,9 @@ const app = Fastify({
 async function shutdown(signal) {
   logger.info({ signal }, 'Shutdown signal received');
   try {
+    // Stop surebet worker (disabled for testing)
+    // stopWorker();
+    
     await app.close();
     await drainAllPools();
     await disconnectRedis();
@@ -61,6 +66,7 @@ async function start() {
   await app.register(webhookRoutes, { prefix: '/webhooks' });
   await app.register(executionRoutes, { prefix: '/auto-order' });
   await app.register(apiRoutes, { prefix: '/api' });
+  await app.register(surebetRoutes, { prefix: '/api/surebet' });
 
   // Health check
   app.get('/health', async () => ({
@@ -91,7 +97,10 @@ async function start() {
     };
   });
 
-  // 5. Start listening
+  // 5. Start surebet worker (mock mode enabled)
+  startWorker();
+
+  // 6. Start listening
   await app.listen({ port: config.port, host: '0.0.0.0' });
   logger.info({ port: config.port }, 'surebet_executor listening');
 }
