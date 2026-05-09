@@ -1,13 +1,26 @@
 const BASE = '';
+const DEFAULT_TIMEOUT_MS = 15000;
 
 async function request(path, opts = {}) {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...opts.headers },
-    ...opts,
-  });
-  const json = await res.json();
-  if (!res.ok) throw { status: res.status, ...json };
-  return json;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), opts.timeout || DEFAULT_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      headers: { 'Content-Type': 'application/json', ...opts.headers },
+      signal: controller.signal,
+      ...opts,
+    });
+    const json = await res.json();
+    if (!res.ok) throw { status: res.status, ...json };
+    return json;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw { status: 408, message: 'Request timed out — server may be busy or pool not warmed up' };
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export const api = {

@@ -124,7 +124,7 @@ function renderSurebetRow(s) {
   const pctClass = profitClass(s.profit_pct);
   const legs = s.legs || (s.bet && s.bet.legs) || [];
   const legsHtml = legs.map(l =>
-    `<span class="leg-tag">${esc(l.label || `${l.type}@${l.book}`)}<span class="leg-odds">${fmtOdds(l.odds)}</span></span>`
+    `<span class="leg-tag">${esc(l.label || l.side || l.type || '?')}@${esc(l.book || '?')}<span class="leg-odds">${fmtOdds(l.odds)}</span></span>`
   ).join('');
 
   return `<tr class="surebet-row ${pctClass}">
@@ -132,12 +132,12 @@ function renderSurebetRow(s) {
       <div>${esc(s.home || '?')} vs ${esc(s.away || '?')}</div>
     </td>
     <td>${esc(s.b188_league_name || s.x1_league_name || s.saba_league_name || s.league || '—')}</td>
-    <td><span class="market-badge mkt-${(s.market || '').toLowerCase()}">${esc(s.market || '—')}</span></td>
+    <td><span class="market-badge mkt-${(s.market || s.combination || '').toLowerCase()}">${esc(s.market || s.combination || '—')}</span></td>
     <td>${s.line != null ? s.line : '—'}</td>
     <td>${esc(s.scope || '—')}</td>
     <td class="profit-cell ${pctClass}">${s.profit_pct != null ? s.profit_pct.toFixed(2) + '%' : '—'}</td>
     <td class="legs-cell">${legsHtml}</td>
-    <td>${esc(s.from_books || '—')}</td>
-    <td class="time-cell">${timeAgo(s.updated_at)}</td>
+    <td>${esc(s.from_books || legs.map(l => l.book).filter(Boolean).join(', ') || '—')}</td>
+    <td class="time-cell">${timeAgo(s.updated_at || s.discovered_at || s.fetched_at)}</td>
   </tr>`;
 }
