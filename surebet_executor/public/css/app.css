@@ -240,6 +240,8 @@ select { cursor: pointer; }
 }
 .badge-live { background: var(--red); color: #fff; animation: pulse-live 2s infinite; }
 .badge-pre { background: var(--text-muted); color: var(--bg-root); }
+.badge-ft { background: var(--accent); color: var(--bg-root); }
+.badge-ht { background: var(--purple); color: var(--bg-root); }
 
 @keyframes pulse-live {
   0%, 100% { opacity: 1; }

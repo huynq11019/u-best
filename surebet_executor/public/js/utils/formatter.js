@@ -34,7 +34,13 @@ export function esc(str) {
 /** Format scope badge */
 export function scopeBadge(scope) {
   if (!scope) return '';
-  const cls = scope === 'live' ? 'badge-live' : 'badge-pre';
-  const label = scope === 'live' ? 'LIVE' : 'PRE';
-  return `<span class="badge ${cls}">${label}</span>`;
+  const s = scope.toLowerCase();
+  const map = {
+    live:     { cls: 'badge-live', label: 'LIVE' },
+    prematch: { cls: 'badge-pre',  label: 'PRE' },
+    ft:       { cls: 'badge-ft',   label: 'FT' },
+    ht:       { cls: 'badge-ht',   label: 'HT' },
+  };
+  const entry = map[s] || { cls: 'badge-pre', label: scope.toUpperCase() };
+  return `<span class="badge ${entry.cls}">${entry.label}</span>`;
 }

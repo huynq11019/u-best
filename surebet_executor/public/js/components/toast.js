@@ -15,8 +15,9 @@ export function toast(message, type = 'info', duration = 4000) {
   el.className = `toast toast-${type}`;
   el.innerHTML = `
     <span class="toast-icon">${type === 'success' ? '&#10003;' : type === 'error' ? '&#10007;' : '&#9432;'}</span>
-    <span class="toast-msg">${message}</span>
+    <span class="toast-msg"></span>
   `;
+  el.querySelector('.toast-msg').textContent = message;
   c.appendChild(el);
   requestAnimationFrame(() => el.classList.add('toast-show'));
   setTimeout(() => {
