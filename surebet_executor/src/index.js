@@ -1,5 +1,8 @@
 // T011 - Application entrypoint: Fastify server + Browser Pool initialization
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
+import fastifyStatic from '@fastify/static';
 import { config } from './config/index.js';
 import { logger } from './config/logger.js';
 import { connectRedis, disconnectRedis } from './config/redis.js';
@@ -10,6 +13,8 @@ import { executionRoutes } from './webhooks/executionRoutes.js';
 import { apiRoutes } from './api/routes.js';
 import { surebetRoutes } from './api/surebetRoutes.js';
 import { startWorker, stopWorker } from './services/surebet/surebetWorker.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = Fastify({
   loggerInstance: logger,
@@ -62,11 +67,23 @@ async function start() {
     })
   );
 
-  // 4. Register routes
+  // 4. Serve static UI files
+  await app.register(fastifyStatic, {
+    root: path.join(__dirname, '..', 'public'),
+    prefix: '/',
+  });
+
+  // 5. Register API routes
   await app.register(webhookRoutes, { prefix: '/webhooks' });
   await app.register(executionRoutes, { prefix: '/auto-order' });
   await app.register(apiRoutes, { prefix: '/api' });
   await app.register(surebetRoutes, { prefix: '/api/surebet' });
+
+  // Bookmakers list (for UI)
+  app.get('/api/bookmakers', async () => ({
+    status: 'ok',
+    bookmakers: listAdapters(),
+  }));
 
   // Health check
   app.get('/health', async () => ({
