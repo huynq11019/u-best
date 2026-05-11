@@ -260,6 +260,9 @@ select { cursor: pointer; }
 .mkt-ah { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(240,200,70,.2); }
 .mkt-1x2 { background: rgba(88,166,255,.12); color: var(--blue); border: 1px solid rgba(88,166,255,.2); }
 .mkt-hdp { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(240,200,70,.2); }
+.mkt-btts { background: rgba(240,130,50,.12); color: #f08232; border: 1px solid rgba(240,130,50,.2); }
+.mkt-ou_h1, .mkt-ou_ht { background: rgba(45,212,168,.08); color: var(--green); border: 1px solid rgba(45,212,168,.15); }
+.mkt-ah_h1, .mkt-ah_ht { background: rgba(240,200,70,.08); color: var(--yellow); border: 1px solid rgba(240,200,70,.15); }
 
 /* ─── Event Cards ───────────────────────────────────────────────── */
 .event-card {
@@ -291,6 +294,22 @@ select { cursor: pointer; }
 .team-home { color: var(--text-primary); }
 .vs { color: var(--text-muted); font-size: .8rem; }
 .team-away { color: var(--text-secondary); }
+.event-score {
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+.live-time {
+  font-size: 0.7rem;
+  color: var(--red);
+  margin-left: 6px;
+  font-weight: 500;
+}
 
 .event-meta {
   display: flex;
@@ -313,6 +332,29 @@ select { cursor: pointer; }
   border-top: 1px solid var(--border);
   padding: 8px 14px 12px;
   background: rgba(0,0,0,.15);
+}
+
+.markets-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.btn-refresh-odds {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-refresh-odds:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
 .markets-table, .odds-table, .surebet-table {
@@ -784,6 +826,34 @@ select { cursor: pointer; }
 }
 .diff-pos { color: var(--green); }
 .diff-neg { color: var(--red); }
+
+/* ─── Event Markets Loading/Error States ────────────────────────── */
+.loading-markets {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 16px;
+  text-align: center;
+}
+.loading-markets::after {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-left: 8px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.error-markets {
+  font-size: 0.8rem;
+  color: var(--red);
+  padding: 12px;
+  text-align: center;
+  background: var(--red-dim);
+  border-radius: var(--radius-sm);
+}
 
 /* ─── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 768px) {

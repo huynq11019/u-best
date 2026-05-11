@@ -1187,14 +1187,15 @@ export default class Lu88Adapter extends BaseAdapter {
     const mode = opts.mode || 'processBet';
     const bettype = leg.bettype ?? 3;
     const typeStr = this._bettypeToTypeStr(bettype);
-    const choiceValue = this._buildChoiceValue(leg);
+    // Ưu tiên dùng choiceValue từ GetTickets nếu có, ngược lại tính từ leg
+    const choiceValue = leg.choiceValue || this._buildChoiceValue(leg);
     const lineVal = leg.line != null ? leg.line : 0;
     // Hdp1 = abs(line) theo format LU88; sign conveyed via Betteam
     const hdp1 = leg.hdp1 != null ? leg.hdp1 : Math.abs(lineVal);
     const hdp2 = leg.hdp2 != null ? leg.hdp2 : 0;
     const betteamRaw = (leg.betteam || 'h').toLowerCase();
-    // LU88 API: Betteam = '1' (Home/Over) hoặc '2' (Away/Under)
-    const betteam = (betteamRaw === 'h' || betteamRaw === 'o' || betteamRaw === '1') ? '1' : '2';
+    // LU88 API: Betteam = 'h' (Home/Over) hoặc 'a' (Away/Under) - giống format UI thật
+    const betteam = (betteamRaw === 'h' || betteamRaw === 'o' || betteamRaw === '1') ? 'h' : 'a';
 
     const params = new URLSearchParams();
     params.set('ItemList[0][Type]', typeStr);
@@ -1383,6 +1384,8 @@ export default class Lu88Adapter extends BaseAdapter {
       line: item.Line != null ? parseFloat(item.Line) : leg.line,
       hdp1: item.Hdp1 != null ? parseFloat(item.Hdp1) : null,
       hdp2: item.Hdp2 != null ? parseFloat(item.Hdp2) : null,
+      betTeam: item.BetTeam ?? leg.betteam,  // Lấy BetTeam từ server response
+      choiceValue: item.ChoiceValue ?? null,
       message: item.Message,
       errorCode: item.ErrorCode,
       isOddsChange: !!item.isOddsChange,
@@ -1463,13 +1466,15 @@ export default class Lu88Adapter extends BaseAdapter {
       'Lu88: GetTickets confirmed — proceeding to ProcessBet'
     );
 
-    // Cập nhật leg với odds/line/hdp do server chốt (AcceptBetterOdds=true cho phép thay đổi)
+    // Cập nhật leg với odds/line/hdp/betteam/choice do server chốt (AcceptBetterOdds=true cho phép thay đổi)
     const finalLeg = {
       ...leg,
       odds: ticket.displayOdds,
       line: ticket.line ?? leg.line,
       hdp1: ticket.hdp1 ?? undefined,
       hdp2: ticket.hdp2 ?? undefined,
+      betteam: ticket.betTeam ?? leg.betteam,  // Dùng BetTeam từ GetTickets
+      choiceValue: ticket.choiceValue ?? undefined,  // Dùng ChoiceValue từ GetTickets nếu có
     };
 
     // --- Step 2: ProcessBet với sinfo + Guid từ GetTickets response ---

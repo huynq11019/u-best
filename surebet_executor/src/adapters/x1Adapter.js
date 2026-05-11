@@ -876,8 +876,8 @@ export default class X1Adapter extends BaseAdapter {
     if (hasLines) {
       // For OU/AH: lines have selectionA, oddsA, selectionB, oddsB, line
       line = selection.line;
-      // Determine which side of the line
-      const isSideA = selectionId.endsWith('_0') || selection.selection === selection.selectionA;
+      // Determine which side of the line - UI sends _A or _B suffix
+      const isSideA = selectionId.endsWith('_A') || selection.selection === selection.selectionA;
       kind = isSideA ? 1 : 2;
       // Map to x1 selection type
       if (marketType === 'OU') {
@@ -893,10 +893,8 @@ export default class X1Adapter extends BaseAdapter {
       kind = 1; // Kind always 1 for 1X2
     }
 
-    // Get current odds
-    const currentOdds = hasLines
-      ? (kind === 1 ? selection.oddsA : selection.oddsB)
-      : selection.odds;
+    // Get current odds - selection.odds is already set correctly by findSelection
+    const currentOdds = selection.odds;
 
     // 4. Validate odds if expectedOdds provided
     if (expectedOdds !== undefined) {

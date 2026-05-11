@@ -69,9 +69,24 @@ export class OddsCache {
       }
       // Check lines (for OU/AH)
       if (market.lines) {
-        const line = market.lines.find(l => l.id === selectionId);
+        // UI sends selectionId with _A/_B suffix (e.g., "event_OU_line_0_A")
+        // but line.id is stored without suffix (e.g., "event_OU_line_0")
+        const baseLineId = selectionId.replace(/_[AB]$/, '');
+        const side = selectionId.endsWith('_A') ? 'A' : selectionId.endsWith('_B') ? 'B' : null;
+
+        const line = market.lines.find(l => l.id === selectionId || l.id === baseLineId);
         if (line) {
-          return { ...line, marketType: market.marketType, marketName: market.marketName, hasLines: true };
+          // For lines, determine which side (A or B) was selected
+          const isSideA = side === 'A' || selectionId === line.id || selectionId.endsWith('_A');
+          return {
+            ...line,
+            marketType: market.marketType,
+            marketName: market.marketName,
+            hasLines: true,
+            selection: isSideA ? line.selectionA : line.selectionB,
+            odds: isSideA ? line.oddsA : line.oddsB,
+            kind: isSideA ? line.kindA : line.kindB,
+          };
         }
       }
     }

@@ -1,11 +1,10 @@
 import { api } from './api.js';
 import { initEventsPanel, setBookmaker, startAutoRefresh } from './components/eventsPanel.js';
-import { initOddsPanel, setOddsBookmaker, startOddsAutoRefresh } from './components/oddsPanel.js';
 import { initSurebetPanel, startSurebetAutoRefresh } from './components/surebetPanel.js';
 import { initBetSlip } from './components/betSlip.js';
 import { toast } from './components/toast.js';
 
-const tabs = ['events', 'odds', 'surebets'];
+const tabs = ['events', 'surebets'];
 let activeTab = 'events';
 let bookmakers = [];
 let activeBook = '';
@@ -13,13 +12,11 @@ let activeBook = '';
 async function init() {
   initBetSlip();
   initEventsPanel();
-  initOddsPanel();
   initSurebetPanel();
   setupTabs();
   await loadBookmakers();
   setupBookmakerSelector();
   startAutoRefresh(10000);
-  startOddsAutoRefresh(10000);
   startSurebetAutoRefresh(15000);
 }
 
@@ -68,13 +65,11 @@ function setupBookmakerSelector() {
       container.querySelectorAll('.book-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       setBookmaker(activeBook);
-      setOddsBookmaker(activeBook);
     });
   });
 
   if (activeBook) {
     setBookmaker(activeBook);
-    setOddsBookmaker(activeBook);
   }
 }
 

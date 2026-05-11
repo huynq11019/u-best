@@ -257,7 +257,8 @@ export async function apiRoutes(fastify) {
    * Đặt cược bằng selection ID đã cache - chỉ cần eventId, selectionId, và stake.
    * Thông tin kèo (odds, line, type) tự động lookup từ cache.
    *
-   * Prerequisites: Gọi GET /api/:bookmakerKey/events/:eventId trước để populate cache.
+   * Nếu dữ liệu không có trong cache, API sẽ tự động gọi getEventOdds để lấy chi tiết
+   * event và fill vào cache trước khi đặt cược.
    */
   fastify.post('/:bookmakerKey/bets/by-selection', {
     schema: {
@@ -277,13 +278,20 @@ export async function apiRoutes(fastify) {
           stake:     { type: 'number', exclusiveMinimum: 0 },
           expectedOdds: { type: 'number' },
           oddsDriftThreshold: { type: 'number', default: 0.05 },
+          sport: { type: 'string', default: 'football' },
         },
         additionalProperties: false,
       },
     },
   }, async (request, reply) => {
     const { bookmakerKey } = request.params;
-    const { eventId, selectionId, stake, expectedOdds, oddsDriftThreshold } = request.body;
+    const { eventId, selectionId, stake, expectedOdds, oddsDriftThreshold, sport } = request.body;
+
+    // Log request
+    fastify.log.info(
+      { bookmakerKey, eventId, selectionId, stake, expectedOdds, sport },
+      '[bets/by-selection] Request received'
+    );
 
     if (!hasAdapter(bookmakerKey)) {
       reply.status(404).send({
@@ -305,18 +313,60 @@ export async function apiRoutes(fastify) {
     }
 
     let page;
+    let cachePopulated = false;
     try {
       page = await acquirePage(bookmakerKey);
 
-      const result = await adapter.placeBetBySelection(page, {
-        eventId,
-        selectionId,
-        stake,
-        expectedOdds,
-        oddsDriftThreshold: oddsDriftThreshold ?? 0.05,
-      });
+      // Thử đặt cược lần đầu
+      let result;
+      try {
+        result = await adapter.placeBetBySelection(page, {
+          eventId,
+          selectionId,
+          stake,
+          expectedOdds,
+          oddsDriftThreshold: oddsDriftThreshold ?? 0.05,
+        });
+      } catch (firstErr) {
+        // Kiểm tra nếu là lỗi cache miss hoặc selection not found
+        const isCacheMiss = /no cached odds/i.test(firstErr.message);
+        const isSelectionNotFound = /selection.*not found/i.test(firstErr.message);
 
-      return {
+        if ((isCacheMiss || isSelectionNotFound) && typeof adapter.getEventOdds === 'function') {
+          fastify.log.info(
+            { bookmakerKey, eventId, selectionId },
+            'Cache miss - fetching event odds to populate cache'
+          );
+
+          // Gọi getEventOdds để lấy chi tiết event và fill vào cache
+          const sportType = sport || 'football';
+          const eventDetail = await adapter.getEventOdds(page, eventId, sportType);
+
+          if (!eventDetail) {
+            throw new Error(`Event with id "${eventId}" not found when fetching odds.`);
+          }
+
+          cachePopulated = true;
+          fastify.log.info(
+            { bookmakerKey, eventId, marketsCount: eventDetail.markets?.length },
+            'Event odds fetched and cached - retrying bet placement'
+          );
+
+          // Thử đặt cược lại sau khi đã populate cache
+          result = await adapter.placeBetBySelection(page, {
+            eventId,
+            selectionId,
+            stake,
+            expectedOdds,
+            oddsDriftThreshold: oddsDriftThreshold ?? 0.05,
+          });
+        } else {
+          // Nếu không phải cache miss hoặc không hỗ trợ getEventOdds → throw lỗi gốc
+          throw firstErr;
+        }
+      }
+
+      const response = {
         status: 'success',
         bookmakerKey,
         order_ref:     result.order_ref,
@@ -326,7 +376,16 @@ export async function apiRoutes(fastify) {
         placed_at:     result.placed_at ?? null,
         odds_changed:  result.odds_changed ?? false,
         line_changed:  result.line_changed ?? false,
+        cache_populated: cachePopulated,
       };
+
+      // Log success response
+      fastify.log.info(
+        { bookmakerKey, eventId, selectionId, response },
+        '[bets/by-selection] Response sent - success'
+      );
+
+      return response;
     } catch (err) {
       fastify.log.error(
         { bookmakerKey, eventId, selectionId, err: err.message },
@@ -336,13 +395,14 @@ export async function apiRoutes(fastify) {
       // Phân biệt lỗi validation (4xx) với lỗi hệ thống (5xx)
       const isCacheMiss = /no cached odds/i.test(err.message);
       const isSelectionNotFound = /selection.*not found/i.test(err.message);
+      const isEventNotFound = /event.*not found/i.test(err.message);
       const isOddsDrift = /drifted too much/i.test(err.message);
 
-      if (isCacheMiss || isSelectionNotFound) {
+      if (isCacheMiss || isSelectionNotFound || isEventNotFound) {
         reply.status(400).send({
           error: 'Bad Request',
           message: err.message,
-          code: isCacheMiss ? 'CACHE_MISS' : 'SELECTION_NOT_FOUND',
+          code: isEventNotFound ? 'EVENT_NOT_FOUND' : (isCacheMiss ? 'CACHE_MISS' : 'SELECTION_NOT_FOUND'),
         });
       } else if (isOddsDrift) {
         reply.status(409).send({
