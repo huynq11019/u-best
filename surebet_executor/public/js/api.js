@@ -73,4 +73,11 @@ export const api = {
 
   /** Surebet worker health */
   surebetHealth: () => request('/api/surebet/health'),
+
+  /** Execute a surebet (place opposing bets) */
+  surebetExecute: (surebet, totalStake) =>
+    request('/api/surebet/execute', {
+      method: 'POST',
+      body: JSON.stringify({ surebet, totalStake }),
+    }),
 };

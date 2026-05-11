@@ -795,6 +795,291 @@ select { cursor: pointer; }
   .surebet-table { font-size: 0.78rem; }
 }
 
+/* ─── Surebet Notification Panel ────────────────────────────────── */
+.surebet-notifications {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  width: 420px;
+}
+
+.surebet-notification {
+  background: var(--bg-card);
+  border: 1px solid var(--green);
+  border-left: 4px solid var(--green);
+  border-radius: 8px;
+  padding: 0;
+  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.15), 0 2px 8px rgba(0,0,0,0.4);
+  animation: notifSlideIn 0.3s ease-out;
+  overflow: hidden;
+}
+
+@keyframes notifSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.surebet-notification.notif-dismissed {
+  animation: notifSlideOut 0.3s ease-in forwards;
+}
+
+@keyframes notifSlideOut {
+  to { transform: translateX(120%); opacity: 0; }
+}
+
+.surebet-notification.notif-executing {
+  border-color: var(--yellow);
+  box-shadow: 0 8px 32px rgba(255, 200, 0, 0.15);
+}
+
+.surebet-notification.notif-executed {
+  border-color: var(--green);
+  opacity: 0.85;
+}
+
+.surebet-notification.notif-failed {
+  border-color: var(--red);
+  box-shadow: 0 8px 32px rgba(255, 60, 60, 0.15);
+}
+
+.notif-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(0, 255, 136, 0.08);
+  border-bottom: 1px solid var(--border);
+}
+
+.notif-icon {
+  font-size: 1.2rem;
+  color: var(--yellow);
+}
+
+.notif-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.notif-profit {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--green);
+  font-size: 1.1rem;
+}
+
+.notif-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.notif-dismiss:hover { color: var(--red); }
+
+.notif-body {
+  padding: 10px 12px;
+}
+
+.notif-match {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+}
+
+.notif-details {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.notif-leg {
+  background: var(--bg-root);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.notif-vs {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.notif-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.notif-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.stake-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stake-input-group label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.notif-stake-input {
+  width: 80px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-root);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.btn-execute {
+  background: var(--green);
+  color: var(--bg-root);
+  border: none;
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+.btn-execute:hover { background: #00cc6a; transform: scale(1.02); }
+.btn-execute:disabled { background: var(--text-muted); cursor: not-allowed; transform: none; }
+
+.btn-skip {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+.btn-skip:hover { border-color: var(--red); color: var(--red); }
+
+.btn-execute-sm {
+  background: var(--green);
+  color: var(--bg-root);
+  border: none;
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.78rem;
+  transition: all 0.15s;
+}
+.btn-execute-sm:hover { background: #00cc6a; }
+
+.btn-warn {
+  background: var(--yellow);
+  color: var(--bg-root);
+  font-weight: 600;
+}
+.btn-warn:hover { background: #e6b800; }
+
+/* Execution status inside notification */
+.notif-execution-status {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.exec-loading {
+  color: var(--yellow);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.exec-loading::before {
+  content: '';
+  width: 14px; height: 14px;
+  border: 2px solid var(--yellow);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.exec-success, .exec-partial, .exec-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.exec-success { color: var(--green); }
+.exec-partial { color: var(--yellow); }
+.exec-error { color: var(--red); }
+
+.exec-icon { font-size: 1.1rem; }
+
+.exec-legs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.exec-leg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+}
+
+.exec-leg-success {
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+.exec-leg-failed {
+  background: rgba(255, 60, 60, 0.08);
+  border: 1px solid rgba(255, 60, 60, 0.2);
+}
+
+.leg-book { font-weight: 700; color: var(--text-primary); }
+.leg-status { color: var(--text-secondary); }
+.leg-error { color: var(--red); font-size: 0.75rem; }
+
+.exec-profit {
+  margin-top: 8px;
+  font-weight: 600;
+  color: var(--green);
+  font-size: 0.85rem;
+}
+
 /* ─── Scrollbar ─────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-root); }

@@ -1,9 +1,14 @@
 // T016 - Background worker for surebet detection and notifications
+import { EventEmitter } from 'events';
 import { scanSurebets } from './surebetFinder.js';
 import { childLogger } from '../../config/logger.js';
 import { config } from '../../config/index.js';
 
 const log = childLogger({ component: 'surebetWorker' });
+
+// SSE event emitter for real-time push to connected clients
+export const surebetEmitter = new EventEmitter();
+surebetEmitter.setMaxListeners(50);
 
 // Worker state
 let workerState = {
@@ -98,6 +103,8 @@ async function runWorkerLoop() {
     // Send notifications for new surebets
     if (newSurebets.length > 0) {
       await sendNotifications(newSurebets);
+      // Emit SSE event for connected frontend clients
+      surebetEmitter.emit('new_surebets', newSurebets);
     }
 
     // Update worker state
