@@ -86,8 +86,10 @@ export async function scanSurebets(options = {}) {
       fuzzyMatches: matches.filter(m => m.matchType === 'fuzzy').length 
     }, 'Event matching completed');
 
-    // Find surebets for each matched pair
+    // Find surebets for each matched pair and build enriched match list
     const allSurebets = [];
+    const matchedEvents = [];
+
     for (const match of matches) {
       const surebets = findOuSurebets(
         match.eventA, 
@@ -96,6 +98,54 @@ export async function scanSurebets(options = {}) {
         { minProfitPct }
       );
       allSurebets.push(...surebets);
+
+      // Build enriched matched event entry for the UI
+      matchedEvents.push({
+        matchType: match.matchType,
+        score: match.score,
+        eventA: {
+          eventId: match.eventA.eventId,
+          home: match.eventA.home,
+          away: match.eventA.away,
+          league: match.eventA.league,
+          scope: match.eventA.scope,
+          startTime: match.eventA.startTime,
+          book: bookA,
+          marketsCount: (match.eventA.markets || []).length,
+          markets: (match.eventA.markets || []).map(m => ({
+            marketType: m.marketType,
+            lines: (m.lines || []).map(l => ({
+              line: l.line,
+              selections: (l.selections || []).map(s => ({
+                side: s.side || s.label,
+                odds: s.odds,
+              })),
+            })),
+          })),
+        },
+        eventB: {
+          eventId: match.eventB.eventId,
+          home: match.eventB.home,
+          away: match.eventB.away,
+          league: match.eventB.league,
+          scope: match.eventB.scope,
+          startTime: match.eventB.startTime,
+          book: bookB,
+          marketsCount: (match.eventB.markets || []).length,
+          markets: (match.eventB.markets || []).map(m => ({
+            marketType: m.marketType,
+            lines: (m.lines || []).map(l => ({
+              line: l.line,
+              selections: (l.selections || []).map(s => ({
+                side: s.side || s.label,
+                odds: s.odds,
+              })),
+            })),
+          })),
+        },
+        surebetCount: surebets.length,
+        bestProfit: surebets.length > 0 ? Math.max(...surebets.map(s => s.profit_pct)) : null,
+      });
     }
 
     // Sort by profit percentage (highest first)
@@ -114,6 +164,7 @@ export async function scanSurebets(options = {}) {
         [bookB]: eventsB.length
       },
       matched: matches.length,
+      matched_events: matchedEvents,
       surebets: allSurebets,
       summary: {
         total_surebets: allSurebets.length,
@@ -227,6 +278,112 @@ function generateMockScanResults(options) {
     }
   ].filter(s => s.profit_pct >= minProfitPct);
 
+  // Generate mock matched events (includes events with AND without surebets)
+  const mockMatchedEvents = [
+    {
+      matchType: 'exact', score: 1.0,
+      eventA: {
+        eventId: 'mock_match_1', home: 'Manchester United', away: 'Liverpool',
+        league: 'Premier League', scope: scope || 'live', startTime: new Date().toISOString(),
+        book: bookA, marketsCount: 2,
+        markets: [{ marketType: 'OU', lines: [
+          { line: 2.5, selections: [{ side: 'Over', odds: 2.10 }, { side: 'Under', odds: 1.80 }] },
+          { line: 3.0, selections: [{ side: 'Over', odds: 2.50 }, { side: 'Under', odds: 1.55 }] },
+        ]}],
+      },
+      eventB: {
+        eventId: 'mock_match_1_b', home: 'Manchester United', away: 'Liverpool',
+        league: 'Premier League', scope: scope || 'live', startTime: new Date().toISOString(),
+        book: bookB, marketsCount: 2,
+        markets: [{ marketType: 'OU', lines: [
+          { line: 2.5, selections: [{ side: 'Over', odds: 1.85 }, { side: 'Under', odds: 2.00 }] },
+          { line: 3.0, selections: [{ side: 'Over', odds: 2.30 }, { side: 'Under', odds: 1.60 }] },
+        ]}],
+      },
+      surebetCount: 1, bestProfit: 2.46,
+    },
+    {
+      matchType: 'exact', score: 1.0,
+      eventA: {
+        eventId: 'mock_match_2', home: 'Real Madrid', away: 'Barcelona',
+        league: 'La Liga', scope: scope || 'live', startTime: new Date().toISOString(),
+        book: bookA, marketsCount: 1,
+        markets: [{ marketType: 'OU', lines: [
+          { line: 3.0, selections: [{ side: 'Over', odds: 1.90 }, { side: 'Under', odds: 1.90 }] },
+        ]}],
+      },
+      eventB: {
+        eventId: 'mock_match_2_b', home: 'Real Madrid', away: 'Barcelona',
+        league: 'La Liga', scope: scope || 'live', startTime: new Date().toISOString(),
+        book: bookB, marketsCount: 1,
+        markets: [{ marketType: 'OU', lines: [
+          { line: 3.0, selections: [{ side: 'Over', odds: 1.95 }, { side: 'Under', odds: 1.90 }] },
+        ]}],
+      },
+      surebetCount: 1, bestProfit: 1.31,
+    },
+    {
+      matchType: 'fuzzy', score: 0.91,
+      eventA: {
+        eventId: 'mock_match_3', home: 'Bayern Munich', away: 'Dortmund',
+        league: 'Bundesliga', scope: scope || 'live', startTime: new Date().toISOString(),
+        book: bookA, marketsCount: 1,
+        markets: [{ marketType: 'OU', lines: [
+          { line: 2.5, selections: [{ side: 'Over', odds: 1.75 }, { side: 'Under', odds: 2.10 }] },
+        ]}],
+      },
+      eventB: {
+        eventId: 'mock_match_3_b', home: 'FC Bayern', away: 'BV Borussia Dortmund',
+        league: 'Bundesliga', scope: scope || 'live', startTime: new Date().toISOString(),
+        book: bookB, marketsCount: 1,
+        markets: [{ marketType: 'OU', lines: [
+          { line: 2.5, selections: [{ side: 'Over', odds: 1.80 }, { side: 'Under', odds: 2.05 }] },
+        ]}],
+      },
+      surebetCount: 0, bestProfit: null,
+    },
+    {
+      matchType: 'exact', score: 1.0,
+      eventA: {
+        eventId: 'mock_match_4', home: 'Arsenal', away: 'Chelsea',
+        league: 'Premier League', scope: scope || 'prematch', startTime: new Date().toISOString(),
+        book: bookA, marketsCount: 1,
+        markets: [{ marketType: 'OU', lines: [
+          { line: 2.5, selections: [{ side: 'Over', odds: 1.95 }, { side: 'Under', odds: 1.88 }] },
+        ]}],
+      },
+      eventB: {
+        eventId: 'mock_match_4_b', home: 'Arsenal', away: 'Chelsea',
+        league: 'Premier League', scope: scope || 'prematch', startTime: new Date().toISOString(),
+        book: bookB, marketsCount: 1,
+        markets: [{ marketType: 'OU', lines: [
+          { line: 2.5, selections: [{ side: 'Over', odds: 1.90 }, { side: 'Under', odds: 1.92 }] },
+        ]}],
+      },
+      surebetCount: 0, bestProfit: null,
+    },
+    {
+      matchType: 'fuzzy', score: 0.87,
+      eventA: {
+        eventId: 'mock_match_5', home: 'PSG', away: 'Marseille',
+        league: 'Ligue 1', scope: scope || 'live', startTime: new Date().toISOString(),
+        book: bookA, marketsCount: 1,
+        markets: [{ marketType: 'OU', lines: [
+          { line: 2.5, selections: [{ side: 'Over', odds: 2.00 }, { side: 'Under', odds: 1.85 }] },
+        ]}],
+      },
+      eventB: {
+        eventId: 'mock_match_5_b', home: 'Paris Saint-Germain', away: 'Olympique de Marseille',
+        league: 'Ligue 1', scope: scope || 'live', startTime: new Date().toISOString(),
+        book: bookB, marketsCount: 1,
+        markets: [{ marketType: 'OU', lines: [
+          { line: 2.5, selections: [{ side: 'Over', odds: 1.92 }, { side: 'Under', odds: 1.90 }] },
+        ]}],
+      },
+      surebetCount: 0, bestProfit: null,
+    },
+  ];
+
   return {
     fetched_at: new Date().toISOString(),
     scan_time_ms: 100,
@@ -235,12 +392,13 @@ function generateMockScanResults(options) {
     min_profit_pct: minProfitPct,
     books: { bookA, bookB },
     scanned: { [bookA]: 25, [bookB]: 22 },
-    matched: 8,
+    matched: mockMatchedEvents.length,
+    matched_events: mockMatchedEvents,
     surebets: mockSurebets,
     summary: {
       total_surebets: mockSurebets.length,
-      exact_matches: 6,
-      fuzzy_matches: 2,
+      exact_matches: mockMatchedEvents.filter(m => m.matchType === 'exact').length,
+      fuzzy_matches: mockMatchedEvents.filter(m => m.matchType === 'fuzzy').length,
       avg_profit_pct: mockSurebets.length > 0 
         ? mockSurebets.reduce((sum, s) => sum + s.profit_pct, 0) / mockSurebets.length 
         : 0

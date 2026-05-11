@@ -622,6 +622,169 @@ select { cursor: pointer; }
   border-radius: var(--radius);
 }
 
+/* ─── View Mode Toggle ──────────────────────────────────────────── */
+.view-mode-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-root);
+  border-radius: var(--radius);
+  padding: 2px;
+}
+.view-mode-btn {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 4px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all .15s;
+  letter-spacing: 0.3px;
+}
+.view-mode-btn:hover { color: var(--text-primary); background: var(--bg-card); }
+.view-mode-btn.active {
+  color: var(--green);
+  background: var(--bg-card);
+  box-shadow: inset 0 -2px 0 var(--green);
+  font-weight: 600;
+}
+
+/* ─── Matched Event Cards ───────────────────────────────────────── */
+.matched-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color .15s;
+  margin-bottom: 8px;
+}
+.matched-card:hover { border-color: rgba(88,166,255,.3); }
+.matched-card-surebet { border-left: 3px solid var(--green); }
+
+.matched-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.matched-header:hover { background: var(--bg-card-hover); }
+
+.matched-teams {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-weight: 500;
+  min-width: 220px;
+}
+
+.matched-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.match-toggle-icon {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  margin-left: auto;
+}
+
+.match-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.4px;
+}
+.match-badge-exact { background: rgba(45,212,168,.15); color: var(--green); border: 1px solid rgba(45,212,168,.25); }
+.match-badge-fuzzy { background: rgba(240,200,70,.12); color: var(--yellow); border: 1px solid rgba(240,200,70,.2); }
+
+.surebet-indicator {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--green);
+  padding: 2px 8px;
+  background: var(--green-dim);
+  border: 1px solid rgba(45,212,168,.25);
+  border-radius: 3px;
+  animation: pulse-live 2s infinite;
+}
+
+.matched-body {
+  border-top: 1px solid var(--border);
+  padding: 10px 14px 14px;
+  background: rgba(0,0,0,.15);
+}
+
+/* ─── Odds Comparison ───────────────────────────────────────────── */
+.odds-comparison-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border);
+}
+.comp-book {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.comp-book-a { color: var(--accent); }
+.comp-book-b { color: var(--purple); }
+.comp-vs { color: var(--text-muted); font-size: 0.85rem; }
+
+.odds-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.odds-comparison-table th {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.odds-comparison-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(30,42,58,.4);
+  vertical-align: middle;
+}
+.odds-comparison-table tr:hover { background: rgba(88,166,255,.04); }
+
+.odds-better {
+  font-weight: 700;
+  color: var(--green) !important;
+  position: relative;
+}
+.odds-better::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 3px;
+  background: rgba(45,212,168,.08);
+  pointer-events: none;
+}
+
+.diff-cell {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+.diff-pos { color: var(--green); }
+.diff-neg { color: var(--red); }
+
 /* ─── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .top-bar { flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
