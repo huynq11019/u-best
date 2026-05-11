@@ -75,6 +75,14 @@
           <span class="label">Surebets</span>
           <div id="surebet-summary"></div>
           <span class="sep">|</span>
+
+          <!-- View mode toggle -->
+          <div class="view-mode-toggle" id="surebet-view-toggle">
+            <button class="view-mode-btn active" data-view="all" title="Show all matched events & odds">All Matched</button>
+            <button class="view-mode-btn" data-view="surebet" title="Show only surebet opportunities">Surebet Only</button>
+          </div>
+          <span class="sep">|</span>
+
           <label class="auto-refresh-toggle" style="gap:6px;">
             Min Profit %
             <input type="number" id="surebet-profit-min" value="0.5" min="0" max="100" step="0.1" style="width:70px;" />
@@ -91,12 +99,20 @@
             <option value="prematch">Pre-match</option>
             <option value="FT">FT</option>
           </select>
+          <select id="surebet-match-type-filter">
+            <option value="">All Match Types</option>
+            <option value="exact">Exact</option>
+            <option value="fuzzy">Fuzzy</option>
+          </select>
           <button id="surebet-scan-btn" class="btn btn-accent">Scan Now</button>
           <button id="surebet-refresh-btn" class="btn">Latest</button>
           <label class="auto-refresh-toggle">
             <input type="checkbox" id="surebet-auto-refresh" checked /> Auto
           </label>
         </div>
+        <!-- Matched events view (shown in "all" mode) -->
+        <div id="surebet-matched-events" style="display:none;"></div>
+        <!-- Surebet-only view (shown in "surebet" mode) -->
         <div id="surebet-list"></div>
       </section>
 
