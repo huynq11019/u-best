@@ -4,6 +4,8 @@ import { toast } from './toast.js';
 
 let refreshTimer = null;
 let viewMode = 'all'; // 'all' = show all matched events+odds, 'surebet' = surebet only
+let sseSource = null;
+let pendingNotifications = []; // queued surebet notifications awaiting user action
 
 export function initSurebetPanel() {
   document.getElementById('surebet-scan-btn').addEventListener('click', () => scanSurebets());
@@ -21,6 +23,33 @@ export function initSurebetPanel() {
       btn.classList.add('active');
       applyClientFilter();
     });
+  });
+
+  // Connect to SSE stream for real-time notifications
+  connectSSE();
+
+  // Test notification button (simulate worker finding a surebet)
+  document.getElementById('surebet-test-notif-btn').addEventListener('click', () => {
+    const mockSurebet = {
+      matchKey: 'test_' + Date.now(),
+      sport: 'football',
+      league: 'Premier League',
+      home: 'Manchester United',
+      away: 'Liverpool',
+      scope: 'live',
+      line: 2.5,
+      matchType: 'exact',
+      matchScore: 1.0,
+      combination: 'Over_A_Under_B',
+      legs: [
+        { book: 'lu88', side: 'Over', odds: 2.10, selectionId: 'test_over', eventId: 'test_1', stake_ratio: 0.476 },
+        { book: 'x1', side: 'Under', odds: 2.00, selectionId: 'test_under', eventId: 'test_2', stake_ratio: 0.524 },
+      ],
+      implied: 0.976,
+      profit_pct: 2.46,
+      fetched_at: new Date().toISOString(),
+    };
+    showSurebetNotification(mockSurebet);
   });
 }
 
@@ -294,6 +323,203 @@ function renderOddsComparison(m) {
   `;
 }
 
+/* ────── SSE Real-time Notifications ────── */
+
+function connectSSE() {
+  if (sseSource) sseSource.close();
+  sseSource = new EventSource('/api/surebet/stream');
+
+  sseSource.addEventListener('surebet', (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.surebets && data.surebets.length > 0) {
+        for (const sb of data.surebets) {
+          showSurebetNotification(sb);
+        }
+      }
+    } catch (e) {
+      console.error('SSE parse error:', e);
+    }
+  });
+
+  sseSource.addEventListener('connected', () => {
+    console.log('SSE connected to surebet stream');
+  });
+
+  sseSource.onerror = () => {
+    // Auto-reconnect is handled by EventSource
+    console.warn('SSE connection lost, reconnecting...');
+  };
+}
+
+function showSurebetNotification(surebet) {
+  pendingNotifications.push(surebet);
+
+  // Play notification sound
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.value = 0.1;
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch (e) { /* audio not available */ }
+
+  // Show notification toast with action button
+  const notifId = `notif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const container = ensureNotificationContainer();
+
+  const profitPct = surebet.profit_pct != null ? surebet.profit_pct.toFixed(2) : '?';
+  const leg0 = surebet.legs[0];
+  const leg1 = surebet.legs[1];
+
+  const html = `
+    <div class="surebet-notification" id="${notifId}" data-surebet-idx="${pendingNotifications.length - 1}">
+      <div class="notif-header">
+        <span class="notif-icon">&#9889;</span>
+        <span class="notif-title">Surebet Found!</span>
+        <span class="notif-profit">+${profitPct}%</span>
+        <button class="notif-dismiss" data-dismiss="${notifId}">&times;</button>
+      </div>
+      <div class="notif-body">
+        <div class="notif-match">${esc(surebet.home || '?')} vs ${esc(surebet.away || '?')}</div>
+        <div class="notif-details">
+          <span class="notif-leg">${esc(leg0.book).toUpperCase()} ${esc(leg0.side)} @${fmtOdds(leg0.odds)}</span>
+          <span class="notif-vs">+</span>
+          <span class="notif-leg">${esc(leg1.book).toUpperCase()} ${esc(leg1.side)} @${fmtOdds(leg1.odds)}</span>
+        </div>
+        <div class="notif-meta">Line: ${surebet.line} | ${esc(surebet.league || '')} | ${esc(surebet.scope || '')}</div>
+      </div>
+      <div class="notif-actions">
+        <div class="stake-input-group">
+          <label>Stake:</label>
+          <input type="number" class="notif-stake-input" value="100" min="1" step="10" />
+        </div>
+        <button class="btn btn-execute" data-execute="${notifId}">Place Bets</button>
+        <button class="btn btn-skip" data-dismiss="${notifId}">Skip</button>
+      </div>
+      <div class="notif-execution-status" id="${notifId}-status" style="display:none;"></div>
+    </div>
+  `;
+
+  container.insertAdjacentHTML('afterbegin', html);
+
+  // Bind events
+  const notifEl = document.getElementById(notifId);
+  notifEl.querySelector(`[data-execute="${notifId}"]`).addEventListener('click', () => {
+    const stakeInput = notifEl.querySelector('.notif-stake-input');
+    const totalStake = parseFloat(stakeInput.value) || 100;
+    executeSurebet(surebet, totalStake, notifId);
+  });
+  notifEl.querySelectorAll(`[data-dismiss="${notifId}"]`).forEach(btn => {
+    btn.addEventListener('click', () => {
+      notifEl.classList.add('notif-dismissed');
+      setTimeout(() => notifEl.remove(), 300);
+    });
+  });
+
+  // Auto-dismiss after 60 seconds if no action taken
+  setTimeout(() => {
+    const el = document.getElementById(notifId);
+    if (el && !el.classList.contains('notif-executed')) {
+      el.classList.add('notif-dismissed');
+      setTimeout(() => el.remove(), 300);
+    }
+  }, 60000);
+
+  toast(`Surebet detected: ${surebet.home} vs ${surebet.away} (+${profitPct}%)`, 'success', 5000);
+}
+
+async function executeSurebet(surebet, totalStake, notifId) {
+  const notifEl = document.getElementById(notifId);
+  const statusEl = document.getElementById(`${notifId}-status`);
+  const executeBtn = notifEl.querySelector(`[data-execute="${notifId}"]`);
+
+  // Disable button and show loading
+  executeBtn.disabled = true;
+  executeBtn.textContent = 'Placing...';
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '<div class="exec-loading">Placing bets on both bookmakers...</div>';
+  notifEl.classList.add('notif-executing');
+
+  try {
+    const result = await api.surebetExecute(surebet, totalStake);
+
+    notifEl.classList.remove('notif-executing');
+    notifEl.classList.add('notif-executed');
+
+    if (result.status === 'success' && result.legs) {
+      const allPlaced = result.legs.every(l => l.status === 'PLACED');
+      if (allPlaced) {
+        statusEl.innerHTML = `
+          <div class="exec-success">
+            <span class="exec-icon">&#10003;</span>
+            <span>Both bets placed successfully!</span>
+          </div>
+          <div class="exec-legs">
+            ${result.legs.map(l => `
+              <div class="exec-leg exec-leg-success">
+                <span class="leg-book">${esc(l.book).toUpperCase()}</span>
+                <span class="leg-odds">@${fmtOdds(l.placed_odds)}</span>
+                <span class="leg-stake">\$${l.placed_stake}</span>
+                <span class="leg-ref">${esc(l.order_ref || '')}</span>
+              </div>
+            `).join('')}
+          </div>
+          <div class="exec-profit">
+            Expected profit: \$${result.expected_profit_amount} (${result.expected_profit_pct}%)
+          </div>
+        `;
+        toast('Surebet executed successfully!', 'success');
+      } else {
+        const failedLegs = result.legs.filter(l => l.status !== 'PLACED');
+        statusEl.innerHTML = `
+          <div class="exec-partial">
+            <span class="exec-icon">&#9888;</span>
+            <span>Partial execution — ${failedLegs.length} leg(s) failed</span>
+          </div>
+          <div class="exec-legs">
+            ${result.legs.map(l => `
+              <div class="exec-leg ${l.status === 'PLACED' ? 'exec-leg-success' : 'exec-leg-failed'}">
+                <span class="leg-book">${esc(l.book).toUpperCase()}</span>
+                <span class="leg-status">${l.status}</span>
+                ${l.error_code ? `<span class="leg-error">${esc(l.error_code)}</span>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        `;
+        toast('Surebet partially executed — check details', 'error');
+      }
+    }
+  } catch (err) {
+    notifEl.classList.remove('notif-executing');
+    notifEl.classList.add('notif-failed');
+    statusEl.innerHTML = `
+      <div class="exec-error">
+        <span class="exec-icon">&#10007;</span>
+        <span>Execution failed: ${esc(err.message || 'Unknown error')}</span>
+      </div>
+    `;
+    executeBtn.disabled = false;
+    executeBtn.textContent = 'Retry';
+    toast('Surebet execution failed', 'error');
+  }
+}
+
+function ensureNotificationContainer() {
+  let container = document.getElementById('surebet-notifications');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'surebet-notifications';
+    container.className = 'surebet-notifications';
+    document.body.appendChild(container);
+  }
+  return container;
+}
+
 /* ────── Surebet-Only View (original) ────── */
 
 function renderSurebets(surebets) {
@@ -316,16 +542,26 @@ function renderSurebets(surebets) {
           <th>Legs</th>
           <th>Books</th>
           <th>Updated</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody>
-        ${surebets.map(s => renderSurebetRow(s)).join('')}
+        ${surebets.map((s, idx) => renderSurebetRow(s, idx)).join('')}
       </tbody>
     </table>
   `;
+
+  // Bind execute buttons in table
+  container.querySelectorAll('[data-execute-row]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.executeRow);
+      const sb = surebets[idx];
+      if (sb) showSurebetNotification(sb);
+    });
+  });
 }
 
-function renderSurebetRow(s) {
+function renderSurebetRow(s, idx) {
   const pctClass = profitClass(s.profit_pct);
   const legs = s.legs || (s.bet && s.bet.legs) || [];
   const legsHtml = legs.map(l =>
@@ -344,5 +580,6 @@ function renderSurebetRow(s) {
     <td class="legs-cell">${legsHtml}</td>
     <td>${esc(s.from_books || legs.map(l => l.book).filter(Boolean).join(', ') || '—')}</td>
     <td class="time-cell">${timeAgo(s.updated_at || s.discovered_at || s.fetched_at)}</td>
+    <td class="action-cell"><button class="btn btn-execute-sm" data-execute-row="${idx}">Place</button></td>
   </tr>`;
 }
